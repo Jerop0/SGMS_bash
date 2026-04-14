@@ -87,34 +87,7 @@ ManageGrades() {
     done
 }
 
-ManageGrades() {
-    while true; do
-        echo ""
-        echo "*** ManageGrades ***"
 
-        select choice in \
-		"▸AssignGradetoStudent" \
-		"▸UpdateExistingGrade"\
-		"▸DeleteaGrade"\
-		"▸ViewGradesbySubject"\
-		"▸ViewGradesbyStudent"\
-		"▸Exit"
-        do
-            case $REPLY in
-                1) AssignGradetoStudent ;;
-                2) UpdateExistingGrade ;;
-                3) DeleteaGrade ;;
-                4) ViewGradesbySubject ;;
-                5) ViewGradesbyStudent ;;
-                6) mainmenu ;;
-                *)
-                    echo "Invalid option"
-                    ;;
-            esac
-            break
-        done
-    done
-}
 Reports_Statistics() {
     while true; do
         echo ""
