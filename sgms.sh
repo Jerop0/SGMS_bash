@@ -1,8 +1,38 @@
 #! /usr/bin/bash
 shopt -s extglob
 
+std_data_dir="sgms_data/students/"
+grade_data_dir="sgms_data/grades/"
+subjects_data_dir="sgms_data/subjects/"
 
+AddStudent() {
+    read -p "Enter your student id: " std_id
+	case $std_id in
+     	 +([0-9])) ;;
+        *) echo "Error: Must enter digits  only."; return ;;
+    esac
+    if [[ -f "$std_data_dir/$std_id.stu" ]]; then
+        echo "Error: Student with ID '$std_id' already exists."
+        return
+    fi
+	read -p "Enter Your Student Name: " std_name
+	case $std_name in 
+		[A-z]+([A-z -_.])) ;;
+		*) echo "Error: Must start Letters only."; return ;;
+    esac
+	read -p "Enter Your Student Email: " std_Email
+	case $std_Email in 
+		[A-z]+([A-z0-9-_.])@([@])+([A-z])@([.])+([A-z])) ;;
+		*) echo "Error: Must Start with letter then @ mail . Domain letters only."; return ;;
+    esac
+    read -p "Enter your student year: " std_year
+    case $std_year in
+       +([1-6])) ;;
+        *) echo "Error: Must enter digits  only."; return ;;
+esac
+	echo "$std_name:$std_Email:$std_year" > "$std_data_dir/$std_id.stu"
 
+}
 ManageStudents() {
     while true; do
         echo ""
