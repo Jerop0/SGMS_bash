@@ -1,37 +1,142 @@
 #! /usr/bin/bash
 shopt -s extglob
 
-std_data_dir="sgms_data/students/"
-grade_data_dir="sgms_data/grades/"
-subjects_data_dir="sgms_data/subjects/"
+std_data_dir="sgms_data/students"
+grade_data_dir="sgms_data/grades"
+subjects_data_dir="sgms_data/subjects"
+
+	
+AddSubject() {
+    read -p "Enter your subject code: " sub_code
+	if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
+		echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
+		return
+	fi
+
+
+	if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
+		echo "Error: Subject with Code '$sub_code' already exists."
+		return
+	fi
+	read -p "Enter Your Subject Name: " sub_name
+	case $sub_name in 
+		[A-z]+([A-z -_.]))
+		 if [[ ${#sub_name} -gt 20 ]]; then
+		     	 echo "Error: Must enter up to 20 letter with -_. only."
+		     	 return
+	     	 fi
+		 ;;
+		*) echo "Error: Must start Letters only up to 20 only."; return ;;
+    	esac
+ 
+	
+	read -p "Enter your Subject credit[1-6]: " sub_credit
+	case $sub_credit in
+		@([1-6])) ;;
+		*) echo "Error: Must enter integer from 1 to 6  only."; return ;;
+	esac
+	echo "Subject $sub_name has been Created with CODE $sub_code.";
+	local newfile="$subjects_data_dir/$sub_code.sub";
+	echo $sub_code >> $newfile;echo $sub_name >> $newfile;echo $std_Email >> $sub_credit
+
+
+}
+
+DeleteSubject(){
+ 	read -p "Enter your Subject code: " sub_code
+ 	
+	if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
+		echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
+		return
+	fi
+    	if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
+		read -p "Are you sure you want to delete Subject with code = $sub_code (y/n): " accept
+		case $accept in 
+		[Yy])
+			rm -r "$subjects_data_dir/$sub_code.sub";
+			rm -r "$grade_data_dir/$sub_code.grd";
+			echo "Subject with code $sub_code has been with it's grades deleted"; ;;
+
+		[Nn]) echo "Thanks"; return ;; 
+		*) echo "invalid option" ;;
+		esac
+        else
+	  echo "Error: Student with ID '$std_id' already exists."
+        fi
+}
+#****************************************************************************************************************************************
 
 AddStudent() {
-    read -p "Enter your student id: " std_id
+
+	std_id="-1";
+	while [ ${std_id} == "-1" ]; do
+  	read -p "Enter your student id: " std_id
 	case $std_id in
-     	 +([0-9])) ;;
-        *) echo "Error: Must enter digits  only."; return ;;
+     	 +([0-9]))
+	 if [[ ${#std_id} -gt 10 ]]; then
+	 	std_id="-1";
+	 	 
+	     	 echo "Error: Must enter up to 10 digits only.";
+	     	 continue ;
+     	 fi
+     	 ;;
+        *)  echo "Error: Must enter up to 10 digits only.";std_id="-1"; continue   ;;
     esac
-    if [[ -f "$std_data_dir/$std_id.stu" ]]; then
-        echo "Error: Student with ID '$std_id' already exists."
-        return
-    fi
+
+     echo ${std_id};
+	if [[ -f "$std_data_dir/$std_id.stu" ]]; then
+		
+		echo "Error: Student with ID '$std_id' already exists.";std_id="-1";
+		continue  
+	fi
+	done;
 	read -p "Enter Your Student Name: " std_name
 	case $std_name in 
-		[A-z]+([A-z -_.])) ;;
-		*) echo "Error: Must start Letters only."; return ;;
-    esac
+		[A-z]+([A-z -_.]))
+		 if [[ ${#std_name} -gt 20 ]]; then
+		     	 echo "Error: Must enter up to 20 letter with-_. only."
+		     	 return
+	     	 fi
+		 ;;
+		*) echo "Error: Must start Letters only up to 20 only."; return ;;
+    	esac
+ 
 	read -p "Enter Your Student Email: " std_Email
 	case $std_Email in 
 		[A-z]+([A-z0-9-_.])@([@])+([A-z])@([.])+([A-z])) ;;
 		*) echo "Error: Must Start with letter then @ mail . Domain letters only."; return ;;
-    esac
-    read -p "Enter your student year: " std_year
-    case $std_year in
-       +([1-6])) ;;
-        *) echo "Error: Must enter digits  only."; return ;;
-esac
-	echo "$std_name:$std_Email:$std_year" > "$std_data_dir/$std_id.stu"
+	esac
+	read -p "Enter your student year[1-6]: " std_year
+	case $std_year in
+		@([1-6])) ;;
+		*) echo "Error: Must enter from 1 to 6   only."; return ;;
+	esac
+	echo "Student $std_name has been Created with ID $std_id.";
+	local newfile="$std_data_dir/$std_id.stu";
+	echo $std_id >> $newfile;echo $std_name >> $newfile;echo $std_Email >> $newfile; echo $std_year > $newfile; 
 
+
+}
+DeleteStudent(){
+ 	read -p "Enter your student id: " std_id
+ 	
+	case $std_id in
+     	 +([0-9])) ;;
+      	  *) echo "Error: Must enter digits  only."; return ;;
+    	esac
+    	if [[ -f "$std_data_dir/$std_id.stu" ]]; then
+		read -p "Are you sure you want to delete student with id = $std_id (y/n): " accept
+		case $accept in 
+		[Yy])
+			rm -r "$std_data_dir/$std_id.stu";
+			echo "Student with id $std_id has been deleted"; ;;
+			#still more delete for grades later.
+		[Nn]) echo "Thanks"; return ;; 
+		*) echo "invalid option" ;;
+		esac
+        else
+	  echo "Error: Student with ID '$std_id' already exists."
+        fi
 }
 ManageStudents() {
     while true; do
