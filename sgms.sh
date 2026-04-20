@@ -33,7 +33,7 @@ StudentTranscript(){
 	old_email=$(sed -n '3p' $file)
 	old_year=$(sed -n '4p' $file)
 	echo "stdid=$old_id";echo "studentName:$old_name" ;echo "Student-Email:$old_email";echo "Year:$old_year";
-	echo "$Subject_name | CODE | Credits | score | grade | GPA"
+	echo "subject_name | CODE | Credits | score | grade | GPA"
 	for file in $(ls $grade_data_dir) 
 	do
 		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
@@ -151,7 +151,46 @@ FailingStudentsReport(){
 	
 }
 FullGradeMatrix(){
+	row="ID | STD_NAME | STd_YEAR "
+	for file in $(ls $subjects_data_dir/*) 
+	do
+		sub_name=$(sed -n '2p' $file)
 
+		row="$row | $sub_name"
+	done;
+	echo $row;
+	for file in $(ls $std_data_dir/*) 
+	do
+	STD_id=$(sed -n '1p' $file)
+	STD_name=$(sed -n '2p' $file)
+	STD_email=$(sed -n '3p' $file)
+	STD_year=$(sed -n '4p' $file)
+	
+
+	sub_row="$STD_id | $STD_name | $STD_year"
+	for file in $(ls $grade_data_dir) 
+	do
+		degree=$(sed -n "/^${std_id}:/p" "$grade_data_dir/$file")
+		
+
+		if [[ degree ]]; then
+			score=$(degree | awk -F : "{print($2)}")
+			GPA=`getGPA $score`
+			letter=`getletter $score $sub_code`
+			sub_code=${file::-4}
+			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
+			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+			sub_row="$sub_row | ${letter:0:2}  "
+		else 
+			sub_row="$sub_row |  Not applied | "
+		fi
+		
+	done
+		
+		
+		
+		
+	done
 }
 
 #------------------
