@@ -5,6 +5,156 @@ std_data_dir="sgms_data/students"
 grade_data_dir="sgms_data/grades"
 subjects_data_dir="sgms_data/subjects"
 
+
+
+
+#-----------------------------------
+
+StudentTranscript(){
+	while true; do
+		read -p "Enter your student id: " std_id
+		case $std_id in
+			 +([0-9]))
+			if [[ ${#std_id} -gt 10 ]]; then
+				 echo "Error: Must enter up to 10 digits only.";
+
+			fi;;
+			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
+		esac
+		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
+			break;  
+		else
+			echo "Error: Student with ID '$std_id' doesn't already exists.";
+
+		fi;
+	done;
+	old_id=$(sed -n '1p' $file)
+	old_name=$(sed -n '2p' $file)
+	old_email=$(sed -n '3p' $file)
+	old_year=$(sed -n '4p' $file)
+	echo "stdid=$old_id";echo "studentName:$old_name" ;echo "Student-Email:$old_email";echo "Year:$old_year";
+	echo "$Subject_name | CODE | Credits | score | grade | GPA"
+	for file in $(ls $grade_data_dir) 
+	do
+		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
+
+		if [[ degree ]]; then
+			score=$(degree | awk -F : "{print($2)}")
+			GPA=`getGPA $score`
+			letter=`getletter $score $sub_code`
+			sub_code=${file::-4}
+			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
+			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+			echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
+		fi
+		
+	done
+}
+
+
+TotalGPA(){
+
+	old_id=$(sed -n '1p' $1)
+	old_name=$(sed -n '2p' $1)
+	old_email=$(sed -n '3p' $1)
+	old_year=$(sed -n '4p' $1)
+	totalGPA=0
+	totalsubs=0
+	for file in $(ls $grade_data_dir) 
+	do
+		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
+
+		if [[ degree ]]; then
+			totalsubs=(($totalsubs+1))
+	
+			score=$(degree | awk -F : "{print($2)}")
+			GPA=`getGPA $score`
+			totalGPA=(($totalGPA+$GPA))
+			letter=`getletter $score $sub_code`
+			sub_code=${file::-4}
+			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
+			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+			echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
+		fi
+		
+	done
+}
+
+SubjectStatistics(){
+while true;do
+		read -p "Enter your subject code: " sub_code
+		if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
+			echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
+
+		fi
+		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
+			break;
+		else
+			echo "Error: Subject with Code '$sub_code' already exists.";
+		fi
+	done;
+		if [[ $(sed -n "/^$std_id:/p" "$grade_data_dir/$sub_code.grd") ]]; then
+			file="$grade_data_dir/$sub_code.grd"
+			echo "NumOfstudents:Grade (A+): $($(sed -n "/:A+$/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (A ): $($(sed -n "/:A $/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (A-): $($(sed -n "/:A-$/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (B+): $($(sed -n "/:B+$/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (B ): $($(sed -n "/:B $/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (B-): $($(sed -n "/:B-$/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (C+): $($(sed -n "/:C+$/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (C ): $($(sed -n "/:C $/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (C-): $($(sed -n "/:C-$/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (D ): $($(sed -n "/:D $/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (F ): $($(sed -n "/:F $/p" $file)  | wc -l) "
+		fi
+
+
+}
+## stdid.stuc  1 code 2 name 
+### subid.sub  1 code 2 name 
+### subid.grd 1 code 2 score 3 letter. 
+### 
+TopStudentsbyGPA(){
+	declare -a arr=()
+	for file in $(ls $std_data_dir) 
+	do
+		std_GPA=`TotalGPA $file`
+		arr["${file::-4}"]=std_GPA
+		
+		
+		
+		
+	done
+	
+}
+FailingStudentsReport(){
+	for file in $(ls $grade_data_dir) 
+	do
+		failstds=$(sed -n "/:F $/p" $file) 
+		if [[ ${#failstds} > 1 ]]; then 
+		for degree in $failstds
+		do		
+		if [[ degree ]]; then
+			score=$(degree | awk -F : "{print($2)}")
+			std_id=$(degree | awk -F : "{print($1)}")
+			GPA=`getGPA $score`
+			letter=`getletter $score $sub_code`
+			sub_code=${file::-4}
+			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
+			std_name=$(sed -n '2p' "$std_data_dir/$std_id.stu")
+			
+			echo " $std_name | $sub_name | $sub_code | $score | ${letter:0:2} | $GPA"
+		fi
+		done
+		fi
+	done
+	
+}
+FullGradeMatrix(){
+
+}
+
+#------------------
 AssignGradetoStudent() {
 	while true; do
 		read -p "Enter your student id: " std_id
@@ -197,11 +347,12 @@ ViewGradesbyStudent(){
 	do
 		line=$(sed -n '/^${std_id}:/p' $file)
 		
-		echo "$line"
+		echo "$line" #need update and add subject name instead of code.
 	done
 	
 	
 }
+
 getletter(){
 	x=$1
 	
@@ -247,6 +398,42 @@ getletter(){
 		fi
 	else 
 		echo "F |$";
+	fi
+}
+
+getGPA(){
+	x=$1
+	
+	if [[ ${#x} == 5 ]]; then 
+		echo "4.0"
+	elif [[ ${#x} == 4 ]]; then 
+		score=${x:0:2}
+		if [[ score -ge 90  ]]; then 
+			echo "4.0"
+		
+		elif [[ score -ge 85  ]]; then 
+			echo "3.7"
+		elif [[ score -ge 80  ]]; then 
+			echo "3.7"
+		elif [[ score -ge 75  ]]; then 
+			echo "3.3"
+		elif [[ score -ge 70  ]]; then 
+			echo "3.0"
+		elif [[ score -ge 65  ]]; then 
+		echo "2.7"
+		elif [[ score -ge 60  ]]; then 
+		echo "2.3"
+		elif [[ score -ge 55  ]]; then 
+		echo "2"
+		elif [[ score -ge 50  ]]; then 
+echo "1.7"
+		elif [[ score -ge 45  ]]; then 
+echo "1.0"
+		elif [[ score -lt 45  ]]; then 
+echo "0.0"
+		fi
+	else 
+		echo "0.0"
 	fi
 }
 
