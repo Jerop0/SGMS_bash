@@ -41,10 +41,15 @@ AssignGradetoStudent() {
 		else
 			while true; do
 			read -p "Enter your score: " score
-			if [[ ! $score =~ ^[0-9]{1,3}@[.]@[0-9]{1}$ ]]; then 
+			if [[  ! $score =~ ^[0-9]{1,3}[.][0-9]$  ]]; then 
 				echo "Enter your score in range of 0.0 |  100.0" ; 
 				continue;
 			else
+			
+				if [[ ${#score} -eq 5 && ${score:0:3} -gt 100 ]]; then #refix this ... 
+					echo "Enter your score in range of 0.0 |  100.0" ;  
+				continue;
+				fi 
 				letter=`getletter $score $sub_code`;
 				echo $letter;
 				echo ${letter:3}
@@ -85,7 +90,8 @@ DeleteaGrade(){
 			echo "Error: Subject with Code '$sub_code' already exists.";
 		fi
 	done;
-	if [[ $(sed -n "/^$std_id/d" "$grade_data_dir/$sub_code.grd") ]]; then
+	if [[ $(sed -n "/^$std_id/p" "$grade_data_dir/$sub_code.grd") ]]; then
+			sed -i "/^$std_id/d" "$grade_data_dir/$sub_code.grd"
 			echo "Deleted sucessfully"
 			
 		else
@@ -135,7 +141,7 @@ UpdateExistingGrade(){
 				continue;
 			else
 			letter=`getletter $new_score $sub_code`;
-
+			echo $letter;
 
 				sed -i "/^$std_id/$stdid:$new_score:${letter:0:2}/s" "$grade_data_dir/$sub_code.grd"
 			fi
@@ -146,7 +152,7 @@ UpdateExistingGrade(){
 }
 getletter(){
 	x=$1
-	sub=$2
+	
 	if [[ ${#x} == 5 ]]; then 
 		echo "A+|1"
 	elif [[ ${#x} == 4 ]]; then 
@@ -182,7 +188,9 @@ getletter(){
 			linenumber=`getline $score $2`	
 			echo "D |$linenumber"
 		elif [[ score -lt 45  ]]; then 
+
 			linenumber=`getline $score $2`	
+			
 			echo "F |$linenumber"
 		fi
 	else 
@@ -190,7 +198,12 @@ getletter(){
 	fi
 }
 getline(){
-echo 1;
+	x=$1
+	
+	awk -F : -v x="$1"'{
+	   if ( $x >= $2 )	
+		print(NR) 
+	}' "$grade_data_dir/$2.grd"
 }
 UpdateSubject() {
 	read -p "Enter your subject code: " sub_code
@@ -307,7 +320,7 @@ AddSubject() {
 		*) echo "Error: Must enter integer from 1 to 6  only."; return ;;
 	esac
 	echo "Subject $sub_name has been Created with CODE $sub_code.";
-	touch "$grade_data_dir/$sub_code.grd"
+	echo "" >> "$grade_data_dir/$sub_code.grd";
 	local newfile="$subjects_data_dir/$sub_code.sub";
 	
 	echo $sub_code >> $newfile;echo $sub_name >> $newfile;echo $sub_credit >> $newfile
