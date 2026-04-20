@@ -17,7 +17,7 @@ StudentTranscript(){
 			 +([0-9]))
 			if [[ ${#std_id} -gt 10 ]]; then
 				 echo "Error: Must enter up to 10 digits only.";
-
+				continue
 			fi;;
 			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
 		esac
@@ -25,7 +25,7 @@ StudentTranscript(){
 			break;  
 		else
 			echo "Error: Student with ID '$std_id' doesn't already exists.";
-
+			continue
 		fi;
 	done;
 	old_id=$(sed -n '1p' $file)
@@ -85,12 +85,13 @@ while true;do
 		read -p "Enter your subject code: " sub_code
 		if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
 			echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
-
+			continue
 		fi
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			break;
 		else
 			echo "Error: Subject with Code '$sub_code' already exists.";
+			continue
 		fi
 	done;
 		if [[ $(sed -n "/^$std_id:/p" "$grade_data_dir/$sub_code.grd") ]]; then
@@ -200,7 +201,7 @@ AssignGradetoStudent() {
 			 +([0-9]))
 			if [[ ${#std_id} -gt 10 ]]; then
 				 echo "Error: Must enter up to 10 digits only.";
-
+				continue
 			fi;;
 			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
 		esac
@@ -208,19 +209,20 @@ AssignGradetoStudent() {
 			break;  
 		else
 			echo "Error: Student with ID '$std_id' already exists.";
-
+			continue
 		fi;
 	done;
 	while true;do
 		read -p "Enter your subject code: " sub_code
 		if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
 			echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
-
+			continue
 		fi
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			break;
 		else
 			echo "Error: Subject with Code '$sub_code' already exists.";
+			continue
 		fi
 	done;
 		if [[ $(sed -n "/^$std_id/p" "$grade_data_dir/$sub_code.grd") ]]; then
@@ -268,7 +270,7 @@ DeleteaGrade(){
 		read -p "Enter your subject code: " sub_code
 		if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
 			echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
-
+			continue
 		fi
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			break;
@@ -293,7 +295,7 @@ UpdateExistingGrade(){
 			 +([0-9]))
 			if [[ ${#std_id} -gt 10 ]]; then
 				 echo "Error: Must enter up to 10 digits only.";
-
+				continue
 			fi;;
 			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
 		esac
@@ -301,19 +303,20 @@ UpdateExistingGrade(){
 			break;  
 		else
 			echo "Error: Student with ID '$std_id' already exists.";
-
+			continue	
 		fi;
 	done;
 	while true;do
 		read -p "Enter your subject code: " sub_code
 		if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
 			echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
-
+			continue
 		fi
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			break;
 		else
 			echo "Error: Subject with Code '$sub_code' already exists.";
+			continue
 		fi
 	done;
 	
@@ -358,6 +361,7 @@ ViewGradesbySubject(){
 			break
 		else
 			echo "Error: Subject with Code '$sub_code' already exists.";
+			continue
 		fi
 	done;
 	
@@ -370,7 +374,7 @@ ViewGradesbyStudent(){
 			 +([0-9]))
 			if [[ ${#std_id} -gt 10 ]]; then
 				 echo "Error: Must enter up to 10 digits only.";
-
+			continue
 			fi;;
 			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
 		esac
@@ -378,7 +382,7 @@ ViewGradesbyStudent(){
 			break;  
 		else
 			echo "Error: Student with ID '$std_id' already exists.";
-
+			continue
 		fi;
 	done;
 	for file in $(ls $grade_data_dir/*)
@@ -533,7 +537,7 @@ UpdateSubject() {
 				[A-z]+([A-z -_.]))
 				 if [[ ${#new_name} -gt 20 ]]; then
 						 echo "Error: Must enter up to 20 letter with -_. only."
-						 
+						 continue
 					 fi;;
 				*) break;;
 				esac
@@ -717,7 +721,7 @@ UpdateStudent() {
 			+([0-9]))
 				if [[ ! -f "$std_data_dir/$std_id.stu" ]]
 				then
-					echo "invalid_id";	
+					echo "invalid_id";	 continue
 				else
 					break
 				fi
