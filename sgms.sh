@@ -39,7 +39,7 @@ StudentTranscript(){
 		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
 
 		if [[ -n "$degree" ]]; then
-			score=$(echo "$degree" | awk -F : "{print($2)}")
+			score=$(echo "$degree" | awk -F : "{print $2}")
 			GPA=`getGPA $score`
 			letter=`getletter $score $sub_code`
 			sub_code=${file::-4}
@@ -67,7 +67,7 @@ TotalGPA(){
 		if [[ -n "$degree" ]]; then
 			totalsubs=$((totalsubs+1))
 	
-			score=$(echo "$degree" | awk -F : "{print($2)}")
+			score=$(echo "$degree" | awk -F : "{print $2}")
 			GPA=`getGPA $score`
 			totalGPA=$((totalGPA+$GPA))
 			letter=`getletter $score $sub_code`
@@ -130,13 +130,13 @@ TopStudentsbyGPA(){
 FailingStudentsReport(){
 	for file in $(ls $grade_data_dir) 
 	do
-		failstds=$(sed -n "/:F $/p" $file) 
+		failstds=$(sed -n "/:F $/p" "$grade_data_dir/$file") 
 		if [[ ${#failstds} > 1 ]]; then 
 		for degree in $failstds
 		do		
 		if [[ -n "$degree" ]]; then
-			score=$(echo "$degree" | awk -F : "{print($2)}")
-			std_id=$(echo "$degree" | awk -F : "{print($1)}")
+			score=$(echo "$degree" | awk -F : "{print $2}")
+			std_id=$(echo "$degree" | awk -F : "{print $1}")
 			GPA=`getGPA $score`
 			letter=`getletter $score $sub_code`
 			sub_code=${file::-4}
@@ -361,7 +361,7 @@ ViewGradesbySubject(){
 		fi
 	done;
 	
-	awk -F : 'BEGIN{print ("Std:Score:Grade")} {print($1)}' "$grade_data_dir/$sub_code.grd"
+	awk -F : 'BEGIN{print ("Std:Score:Grade")} {print $1}' "$grade_data_dir/$sub_code.grd"
 }
 ViewGradesbyStudent(){
 	while true; do
