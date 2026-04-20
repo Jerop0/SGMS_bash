@@ -58,26 +58,36 @@ TotalGPA(){
 	old_name=$(sed -n '2p' $1)
 	old_email=$(sed -n '3p' $1)
 	old_year=$(sed -n '4p' $1)
-	totalGPA=0
-	totalsubs=0
+	local  totalGPA=0
+	local  totalsubs=0
 	for file in $(ls $grade_data_dir) 
 	do
 		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
 
 		if [[ -n "$degree" ]]; then
-			totalsubs=$((totalsubs+1))
-	
-			score=$(echo "$degree" | awk -F : "{print $2}")
+			totalsubs=$(($totalsubs + 1))
+
+			score=$(echo "$degree" | awk -F : '{print $2}')
 			GPA=`getGPA $score`
-			totalGPA=$((totalGPA+$GPA))
+			
+
+			totalGPA=$(awk -v total="$totalGPA" -v GP="$GPA" 'BEGIN {total= GP + total;print total} ')
+
 			letter=`getletter $score $sub_code`
 			sub_code=${file::-4}
 			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
 			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
-			echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
+
 		fi
+	
 		
 	done
+	if [[ $totalsubs -gt 0 ]];then
+		##x=$( awk -v total="$totalGPA" -v hours="$totalsubs" 'BEGIN { print total} ')
+		echo "$totalGPA"
+	else
+		echo "0.0"
+	fi
 }
 
 SubjectStatistics(){
@@ -115,19 +125,35 @@ while true;do
 ### subid.sub  1 code 2 name 
 ### subid.grd 1 code 2 score 3 letter. 
 ### 
-TopStudentsbyGPA(){
-	declare -a arr=()
-	for file in $(ls $std_data_dir) 
-	do
-		std_GPA=`TotalGPA $file`
-		arr["${file::-4}"]=std_GPA
-		
-		
-		
-		
-	done
-	
+TopStudentsbyGPA() {
+    local tmp="/tmp/topstudents.$$"
+    : > "$tmp"   
+
+    local file sid sname gpa line_no
+
+    for file in "$std_data_dir"/*.stu; do
+        [[ -f "$file" ]] || continue
+        sid=$(sed -n '1p' "$file")
+        sname=$(sed -n '2p' "$file")
+        gpa=$(TotalGPA "$file")
+
+        line_no=$(awk -F: -v g="$gpa" '$3 < g { print NR; exit }' "$tmp")
+
+        if [[ -z "$line_no" ]]; then
+
+            echo "${sname}:${sid}:${gpa}" >> "$tmp"
+        else
+
+            sed -i "${line_no}i ${sname}:${sid}:${gpa}" "$tmp"
+        fi
+    done
+
+    echo "Rank | Name | ID | GPA"
+    awk -F: '{ printf "%4d | %s | %s | %s\n", NR, $1, $2, $3 }' "$tmp"
+
+    rm -f "$tmp"
 }
+
 FailingStudentsReport(){
 	for file in $(ls $grade_data_dir) 
 	do
@@ -135,12 +161,14 @@ FailingStudentsReport(){
 		if [[ ${#failstds} > 1 ]]; then 
 		for degree in $failstds
 		do		
-		if [[ -n "$degree" ]]; then
-			score=$(echo "$degree" | awk -F : "{print $2}")
-			std_id=$(echo "$degree" | awk -F : "{print $1}")
+		if [[  "$degree" ]]; then
+			score=$(echo "$degree" | awk -F : '{print $2}')
+			std_id=$(echo "$degree" | awk -F : '{print $1}' )
+			echo "$std_id"
 			GPA=`getGPA $score`
-			letter=`getletter $score $sub_code`
+			
 			sub_code=${file::-4}
+			letter=`getletter $score $sub_code`
 			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
 			std_name=$(sed -n '2p' "$std_data_dir/$std_id.stu")
 			
@@ -452,7 +480,6 @@ getGPA(){
 		score=${x:0:2}
 		if [[ score -ge 90  ]]; then 
 			echo "4.0"
-		
 		elif [[ score -ge 85  ]]; then 
 			echo "3.7"
 		elif [[ score -ge 80  ]]; then 
@@ -462,17 +489,17 @@ getGPA(){
 		elif [[ score -ge 70  ]]; then 
 			echo "3.0"
 		elif [[ score -ge 65  ]]; then 
-		echo "2.7"
+			echo "2.7"
 		elif [[ score -ge 60  ]]; then 
-		echo "2.3"
+			echo "2.3"
 		elif [[ score -ge 55  ]]; then 
-		echo "2"
+			echo "2"
 		elif [[ score -ge 50  ]]; then 
-echo "1.7"
+			echo "1.7"
 		elif [[ score -ge 45  ]]; then 
-echo "1.0"
+			echo "1.0"
 		elif [[ score -lt 45  ]]; then 
-echo "0.0"
+			echo "0.0"
 		fi
 	else 
 		echo "0.0"
