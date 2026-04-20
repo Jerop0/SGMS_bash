@@ -46,14 +46,12 @@ AssignGradetoStudent() {
 				continue;
 			else
 			
-				if [[ ${#score} -eq 5 && ${score:0:3} -gt 100 ]]; then #refix this ... 
+				if [[ ${#score} -eq 5 && ${score:0:3} -gt 100 ]]; then 
 					echo "Enter your score in range of 0.0 |  100.0" ;  
 				continue;
 				fi 
 				letter=`getletter $score $sub_code`;
-				echo $letter;
-				echo ${letter:3}
-				echo ${letter:0:2}
+
 				sed -i "${letter:3}i $std_id:$score:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
 				break;
 			fi
@@ -130,24 +128,78 @@ UpdateExistingGrade(){
 			echo "Error: Subject with Code '$sub_code' already exists.";
 		fi
 	done;
+	
 		if [[ ! $(sed -n "/^$std_id/p" "$grade_data_dir/$sub_code.grd") ]]; then
 			echo "Error: There is a Grade for this STD.";
 			return;
 		else
 			while true; do
 			read -p "Enter your new score: " new_score
-			if [[ ! $new_score =~ ^[0-9]{1,3}@[.]@[0-9]{1}$ ]]; then 
-				echo "Enter your new_score in range of 0.0 |  100.0" ; 
+			if [[  ! $new_score =~ ^[0-9]{1,3}[.][0-9]$  ]]; then 
+				echo "Enter your score in range of 0.0 |  100.0" ; 
 				continue;
 			else
-			letter=`getletter $new_score $sub_code`;
-			echo $letter;
+			
+				if [[ ${#new_score} -eq 5 && ${new_score:0:3} -gt 100 ]]; then 
+					echo "Enter your score in range of 0.0 |  100.0" ;  
+					continue;
+				fi 
+				letter=`getletter $new_score $sub_code`;
 
-				sed -i "/^$std_id/$stdid:$new_score:${letter:0:2}/s" "$grade_data_dir/$sub_code.grd"
+				sed -i "/^$std_id/d" "$grade_data_dir/$sub_code.grd"
+				sed -i "${letter:3}i $std_id:$new_score:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+
+				break;
 			fi
+			
+
+			
 			done;
 		fi;
 
+	
+}
+ViewGradesbySubject(){
+	while true;do
+		read -p "Enter your subject code: " sub_code
+		if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
+			echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
+
+		fi
+		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
+			break;
+		else
+			echo "Error: Subject with Code '$sub_code' already exists.";
+		fi
+	done;
+	
+	awk -F : 'BEGIN{print (Std:Score:Grade)}{print($0)}' "$grade_data_dir/$sub_code.grd"
+}
+ViewGradesbyStudent(){
+	while true; do
+		read -p "Enter your student id: " std_id
+		case $std_id in
+			 +([0-9]))
+			if [[ ${#std_id} -gt 10 ]]; then
+				 echo "Error: Must enter up to 10 digits only.";
+
+			fi;;
+			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
+		esac
+		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
+			break;  
+		else
+			echo "Error: Student with ID '$std_id' already exists.";
+
+		fi;
+	done;
+	for file in $(ls $grade_data_dir/*)
+	do
+		line=$(sed -n '/^${std_id}:/p' $file)
+		
+		echo "$line"
+	done
+	
 	
 }
 getletter(){
@@ -194,17 +246,20 @@ getletter(){
 			echo "F |$linenumber"
 		fi
 	else 
-		echo "F |\$";
+		echo "F |$";
 	fi
 }
+
 getline(){
 	x=$1
 	
-	awk -F : -v x="$1"'{
+	awk -F : -v x="$1" '{
+	
 	   if ( $x >= $2 )	
 		print(NR) 
-	}' "$grade_data_dir/$2.grd"
-}
+	}' "$grade_data_dir/$2.grd"  ;
+} 
+##Refix.
 UpdateSubject() {
 	read -p "Enter your subject code: " sub_code
 	if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
