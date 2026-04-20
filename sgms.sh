@@ -38,8 +38,8 @@ StudentTranscript(){
 	do
 		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
 
-		if [[ degree ]]; then
-			score=$(degree | awk -F : "{print($2)}")
+		if [[ -n "$degree" ]]; then
+			score=$(echo "$degree" | awk -F : "{print($2)}")
 			GPA=`getGPA $score`
 			letter=`getletter $score $sub_code`
 			sub_code=${file::-4}
@@ -64,12 +64,12 @@ TotalGPA(){
 	do
 		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
 
-		if [[ degree ]]; then
-			totalsubs=(($totalsubs+1))
+		if [[ -n "$degree" ]]; then
+			totalsubs=$((totalsubs+1))
 	
-			score=$(degree | awk -F : "{print($2)}")
+			score=$(echo "$degree" | awk -F : "{print($2)}")
 			GPA=`getGPA $score`
-			totalGPA=(($totalGPA+$GPA))
+			totalGPA=$((totalGPA+$GPA))
 			letter=`getletter $score $sub_code`
 			sub_code=${file::-4}
 			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
@@ -134,9 +134,9 @@ FailingStudentsReport(){
 		if [[ ${#failstds} > 1 ]]; then 
 		for degree in $failstds
 		do		
-		if [[ degree ]]; then
-			score=$(degree | awk -F : "{print($2)}")
-			std_id=$(degree | awk -F : "{print($1)}")
+		if [[ -n "$degree" ]]; then
+			score=$(echo "$degree" | awk -F : "{print($2)}")
+			std_id=$(echo "$degree" | awk -F : "{print($1)}")
 			GPA=`getGPA $score`
 			letter=`getletter $score $sub_code`
 			sub_code=${file::-4}
@@ -173,24 +173,23 @@ FullGradeMatrix(){
 		degree=$(sed -n "/^${std_id}:/p" "$grade_data_dir/$file")
 		
 
-		if [[ degree ]]; then
-			score=$(degree | awk -F : "{print($2)}")
+
+			score=$(echo "$degree" | awk -F : "{ print $2 }")
 			GPA=`getGPA $score`
 			letter=`getletter $score $sub_code`
 			sub_code=${file::-4}
 			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
 			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
 			sub_row="$sub_row | ${letter:0:2}  "
-		else 
-			sub_row="$sub_row |  Not applied | "
-		fi
-		
-	done
-		
-		
 		
 		
 	done
+		
+	echo $sub_row;	
+		
+		
+	done
+	
 }
 
 #------------------
@@ -353,16 +352,16 @@ ViewGradesbySubject(){
 		read -p "Enter your subject code: " sub_code
 		if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
 			echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
-
+			continue;
 		fi
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
-			break;
+			break
 		else
 			echo "Error: Subject with Code '$sub_code' already exists.";
 		fi
 	done;
 	
-	awk -F : 'BEGIN{print (Std:Score:Grade)}{print($0)}' "$grade_data_dir/$sub_code.grd"
+	awk -F : 'BEGIN{print ("Std:Score:Grade")} {print($1)}' "$grade_data_dir/$sub_code.grd"
 }
 ViewGradesbyStudent(){
 	while true; do
