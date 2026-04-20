@@ -5,6 +5,61 @@ std_data_dir="sgms_data/students"
 grade_data_dir="sgms_data/grades"
 subjects_data_dir="sgms_data/subjects"
 
+
+UpdateSubject() {
+	read -p "Enter subject code to update: " sub_id
+	if [[ ! -f "$subjects_data_dir/$sub_id.sub" ]]
+	then
+		echo "Subject code doesn't exist"
+		return
+	fi
+	old_name=$(sed -n '2p' $subjects_data_dir/$sub_id.sub)
+	old_hours=$(sed -n '3p' $subjects_data_dir/$sub_id.sub)
+	echo "Current: $old_name | $old_hours"
+	select choice in \
+	"▸Name" \
+	"▸Hours" \
+	"▸Exit"
+	do
+		case $REPLY in
+		1)
+			while true
+			do
+				read -p "Enter new name: " new_name
+				case $new_name in 
+					#addname validation
+					*) break ;;
+				esac
+			done
+			sed -i "2s/.*/$new_name/" $subjects_data_dir/$sub_id.sub;;
+		2)
+			while true
+			do
+				read -p "Enter new hours (1-6): " new_hours
+				case $new_hours in
+					+([1-6])) break ;;
+					*) echo "Hours must be 1 to 6." ;;
+				esac
+			done
+			sed -i "3s/.*/$new_hours/" $subjects_data_dir/$sub_id.sub;;
+		3) return ;;
+		*) echo "Invalid option" ;;
+		esac
+		break
+	done
+}
+
+ListSubjects() {
+	echo "Code | Name | Credits"
+	for f in $(ls $subjects_data_dir)
+	do
+		code=$(sed -n '1p' $subjects_data_dir/$f)
+		name=$(sed -n '2p' $subjects_data_dir/$f)
+		cred=$(sed -n '3p' $subjects_data_dir/$f)
+		echo "$code | $name | $cred"
+	done
+}
+
 	
 AddSubject() {
     read -p "Enter your subject code: " sub_code
@@ -137,6 +192,85 @@ DeleteStudent(){
         else
 	  echo "Error: Student with ID '$std_id' already exists."
         fi
+}
+
+
+UpdateStudent() {
+	while true
+	do
+		read -p "Enter student id to update: " std_id
+		case $std_id in
+			+([0-9]))
+				if [[ ! -f "$std_data_dir/$std_id.stu" ]]
+				then
+					echo "";
+					return
+				else
+					break
+				fi
+				;;
+			*) echo "Error: Must enter digits  only." ;;
+		esac
+	done
+	old_name=$(sed -n '2p' $std_data_dir/$std_id.stu)
+	old_email=$(sed -n '3p' $std_data_dir/$std_id.stu)
+	old_year=$(sed -n '4p' $std_data_dir/$std_id.stu)
+	echo "Current: $old_name | $old_email | $old_year"
+	select choice in \
+		"▸Name" \
+		"▸Email" \
+		"▸Year" \
+		"▸Exit"
+	do
+		case $REPLY in
+		1)
+			while true
+			do
+				read -p "Enter new name: " new_name
+				case $new_name in 
+					"") echo "Error: Name cannot be empty." ;;
+					*) break ;;
+				esac
+			done
+			sed -i "2s/.*/$new_name/" $std_data_dir/$std_id.stu;;
+		2)
+			while true
+			do
+				read -p "Enter new email: " new_email
+				case $new_email in 
+					[A-z]+([A-z0-9-_.])@([@])+([A-z])@([.])+([A-z])) break;;
+					*) echo "Error: Must be user@domain.ext format.";;
+				esac
+			done
+			sed -i "3s/.*/$new_email/" $std_data_dir/$std_id.stu;;
+		3)
+			while true
+			do
+				read -p "Enter new year: " new_year
+				case $new_year in
+					+([1-6])) break ;;
+					*) echo "Error: Year must be 1 to 6." ;;
+				esac
+			done
+			sed -i "4s/.*/$new_year/" $std_data_dir/$std_id.stu ;;
+		4) return ;;
+		*) echo "Invalid option" ;;
+		esac
+		break
+	done
+}
+
+ListStudents() {
+
+	echo "ID | Name | Email | Year"
+
+	for f in $(ls $std_data_dir) do
+		sid=$(sed -n '1p' $std_data_dir/$f)
+		sname=$(sed -n '2p' $std_data_dir/$f)
+		semail=$(sed -n '3p' $std_data_dir/$f)
+		syear=$(sed -n '4p' $std_data_dir/$f)
+		echo "$sid | $sname | $semail | $syear"
+	done
 }
 ManageStudents() {
     while true; do
