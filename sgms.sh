@@ -10,45 +10,53 @@ subjects_data_dir="sgms_data/subjects"
 
 #-----------------------------------
 
-StudentTranscript(){
+StudentTranscript()
+{ 
 	while true; do
+
 		read -p "Enter your student id: " std_id
+	
 		case $std_id in
 			 +([0-9]))
 			if [[ ${#std_id} -gt 10 ]]; then
-				 echo "Error: Must enter up to 10 digits only.";
-				continue
+				 echo "Error: Must enter up to 10 digits only."
+				continue;
 			fi;;
 			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
 		esac
 		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
-			break;  
+			file="$std_data_dir/$std_id.stu"
+			old_id=$(sed -n '1p' $file)
+			old_name=$(sed -n '2p' $file)
+			old_email=$(sed -n '3p' $file)
+			old_year=$(sed -n '4p' $file)
+
+			echo "stdid=$old_id";echo "studentName:$old_name" ;echo "Student-Email:$old_email";echo "Year:$old_year";
+			echo "subject_name | CODE | Credits | score | grade | GPA"
+			for file in $(ls $grade_data_dir) 
+			do
+
+				degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
+
+				if [[ "$degree" ]]; then
+					score=$(echo "$degree" | awk -F : "{print $2}")
+					GPA=`getGPA $score`
+					letter=`getletter $score $sub_code`
+					sub_code=${file::-4}
+					sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
+					sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+					echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
+					
+				fi
+				
+			done
+			break;
 		else
 			echo "Error: Student with ID '$std_id' doesn't already exists.";
 			continue
 		fi;
 	done;
-	old_id=$(sed -n '1p' $file)
-	old_name=$(sed -n '2p' $file)
-	old_email=$(sed -n '3p' $file)
-	old_year=$(sed -n '4p' $file)
-	echo "stdid=$old_id";echo "studentName:$old_name" ;echo "Student-Email:$old_email";echo "Year:$old_year";
-	echo "subject_name | CODE | Credits | score | grade | GPA"
-	for file in $(ls $grade_data_dir) 
-	do
-		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
-
-		if [[ -n "$degree" ]]; then
-			score=$(echo "$degree" | awk -F : "{print $2}")
-			GPA=`getGPA $score`
-			letter=`getletter $score $sub_code`
-			sub_code=${file::-4}
-			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
-			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
-			echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
-		fi
-		
-	done
+	
 }
 
 
@@ -106,8 +114,8 @@ while true;do
 	done;
 		if [[ $(sed -n "/^$std_id:/p" "$grade_data_dir/$sub_code.grd") ]]; then
 			file="$grade_data_dir/$sub_code.grd"
-			echo "NumOfstudents:Grade (A+): $($(sed -n "/:A+$/p" $file)  | wc -l) "
-			echo "NumOfstudents:Grade (A ): $($(sed -n "/:A $/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (A+): $( sed -n "/:A+$/p" $file  | wc -l) "
+			echo "NumOfstudents:Grade (A ): $( sed -n "/:A $/p" $file  | wc -l) "
 			echo "NumOfstudents:Grade (A-): $($(sed -n "/:A-$/p" $file)  | wc -l) "
 			echo "NumOfstudents:Grade (B+): $($(sed -n "/:B+$/p" $file)  | wc -l) "
 			echo "NumOfstudents:Grade (B ): $($(sed -n "/:B $/p" $file)  | wc -l) "
@@ -393,7 +401,7 @@ ViewGradesbySubject(){
 		fi
 	done;
 	
-	awk -F : 'BEGIN{print ("Std:Score:Grade")} {print $1}' "$grade_data_dir/$sub_code.grd"
+	awk -F : 'BEGIN{print ("Std:Score:Grade")} {print $0}' "$grade_data_dir/$sub_code.grd"
 }
 ViewGradesbyStudent(){
 	while true; do
@@ -402,23 +410,26 @@ ViewGradesbyStudent(){
 			 +([0-9]))
 			if [[ ${#std_id} -gt 10 ]]; then
 				 echo "Error: Must enter up to 10 digits only.";
-			continue
+				continue;
 			fi;;
 			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
 		esac
 		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
+			
+			for file in $(ls $grade_data_dir/*)
+			do
+				line=$(sed -n '/^${std_id}:/p' $file)
+				
+				echo "$line" ;#need update and add subject name instead of code.
+			done
+			
+			
 			break;  
 		else
 			echo "Error: Student with ID '$std_id' already exists.";
 			continue
 		fi;
 	done;
-	for file in $(ls $grade_data_dir/*)
-	do
-		line=$(sed -n '/^${std_id}:/p' $file)
-		
-		echo "$line" #need update and add subject name instead of code.
-	done
 	
 	
 }
@@ -673,12 +684,14 @@ AddStudent() {
 	 if [[ ${#std_id} -gt 10 ]]; then
 	     	 echo "Error: Must enter up to 10 digits only.";
 	     	 continue ;
+	     
      	 fi
+     	
      	 ;;
         *)  echo "Error: Must enter up to 10 digits only."; continue   ;;
     esac
 
-     echo ${std_id};
+  
 	if [[ -f "$std_data_dir/$std_id.stu" ]]; then
 		echo "Error: Student with ID '$std_id' already exists.";
 		continue  
@@ -708,8 +721,8 @@ AddStudent() {
 		*) echo "Error: Must enter from 1 to 6   only."; return ;;
 	esac
 	echo "Student $std_name has been Created with ID $std_id.";
-	local newfile="$std_data_dir/$std_id.stu";
-	echo $std_id >> $newfile;echo $std_name >> $newfile;echo $std_Email >> $newfile; echo $std_year > $newfile; 
+	 newfile="$std_data_dir/$std_id.stu";
+	echo $std_id >> $newfile;echo $std_name >> $newfile;echo $std_Email >> $newfile; echo $std_year >> $newfile; 
 
 
 }
