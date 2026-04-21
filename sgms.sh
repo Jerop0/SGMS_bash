@@ -39,8 +39,9 @@ StudentTranscript()
 				degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
 
 				if [[ "$degree" ]]; then
-					score=$(echo "$degree" | awk -F : "{print $2}")
-					GPA=`getGPA $score`
+					score=$(echo "$degree" | cut -d: -f2)
+					std_id=$(echo "$degree" | cut -d: -f1)
+					GPA=$(getGPA "$score")
 					letter=`getletter $score $sub_code`
 					sub_code=${file::-4}
 					sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
@@ -75,8 +76,9 @@ TotalGPA(){
 		if [[ -n "$degree" ]]; then
 			totalsubs=$(($totalsubs + 1))
 
-			score=$(echo "$degree" | awk -F : '{print $2}')
-			GPA=`getGPA $score`
+			score=$(echo "$degree" | cut -d: -f2)
+			std_id=$(echo "$degree" | cut -d: -f1)
+			GPA=$(getGPA $score)
 			
 
 			totalGPA=$(awk -v total="$totalGPA" -v GP="$GPA" 'BEGIN {total= GP + total;print total} ')
@@ -112,7 +114,7 @@ while true;do
 			continue
 		fi
 	done;
-		if [[ $(sed -n "/^$std_id:/p" "$grade_data_dir/$sub_code.grd") ]]; then
+	if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			file="$grade_data_dir/$sub_code.grd"
 			echo "NumOfstudents:Grade (A+): $( sed -n "/:A+$/p" $file  | wc -l) "
 			echo "NumOfstudents:Grade (A ): $( sed -n "/:A $/p" $file  | wc -l) "
@@ -170,10 +172,9 @@ FailingStudentsReport(){
 		for degree in $failstds
 		do		
 		if [[  "$degree" ]]; then
-			score=$(echo "$degree" | awk -F : '{print $2}')
-			std_id=$(echo "$degree" | awk -F : '{print $1}' )
-			echo "$std_id"
-			GPA=`getGPA $score`
+					score=$(echo "$degree" | cut -d: -f2)
+					std_id=$(echo "$degree" | cut -d: -f1)
+					GPA=$(getGPA $score)
 			
 			sub_code=${file::-4}
 			letter=`getletter $score $sub_code`
@@ -214,17 +215,21 @@ FullGradeMatrix(){
 	do
 		degree=$(sed -n "/^${std_id}:/p" "$grade_data_dir/$file")
 		
+		if [[ $degree ]]; then
 
+			score=$(echo "$degree" | cut -d: -f2)
+			std_id=$(echo "$degree" | cut -d: -f1)
+			GPA=$(getGPA $score)
+	
+			local letter=`getletter $score $sub_code`
 
-			score=$(echo "$degree" | awk -F : "{ print $2 }")
-			GPA=`getGPA $score`
-			letter=`getletter $score $sub_code`
 			sub_code=${file::-4}
 			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
 			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
 			sub_row="$sub_row | ${letter:0:2}  "
-		
-		
+		else 
+		 sub_row="$sub_row |  "
+		fi
 	done
 		
 	echo $sub_row;	
@@ -281,7 +286,7 @@ AssignGradetoStudent() {
 					echo "Enter your score in range of 0.0 |  100.0" ;  
 				continue;
 				fi 
-				letter=`getletter "$score" "$sub_code"`;
+				local letter=`getletter "$score" "$sub_code"`;
 				if [[ ${letter:3} -gt 0 ]] ; then
 					sed -i "${letter:3}i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
 				else
@@ -442,8 +447,10 @@ ViewGradesbyStudent(){
 				degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
 
 				if [[ "$degree" ]]; then
-					score=$(echo "$degree" | awk -F : "{print $2}")
-					GPA=`getGPA $score`
+					score=$(echo "$degree" | cut -d: -f2)
+					std_id=$(echo "$degree" | cut -d: -f1)
+					GPA=$(getGPA $score)
+					
 					letter=`getletter $score $sub_code`
 					sub_code=${file::-4}
 					sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
@@ -471,6 +478,7 @@ getletter(){
 		echo "A+|1"
 	elif [[ ${#x} == 4 ]]; then 
 		score=${x:0:2}
+
 		if [[ $score -ge 90  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "A+|$linenumber"
@@ -519,6 +527,7 @@ getGPA(){
 		echo "4.0"
 	elif [[ ${#x} == 4 ]]; then 
 		score=${x:0:2}
+
 		if [[ $score -ge 90  ]]; then 
 			echo "4.0"
 		elif [[ $score -ge 85  ]]; then 
