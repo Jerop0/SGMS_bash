@@ -116,15 +116,15 @@ while true;do
 			file="$grade_data_dir/$sub_code.grd"
 			echo "NumOfstudents:Grade (A+): $( sed -n "/:A+$/p" $file  | wc -l) "
 			echo "NumOfstudents:Grade (A ): $( sed -n "/:A $/p" $file  | wc -l) "
-			echo "NumOfstudents:Grade (A-): $($(sed -n "/:A-$/p" $file)  | wc -l) "
-			echo "NumOfstudents:Grade (B+): $($(sed -n "/:B+$/p" $file)  | wc -l) "
-			echo "NumOfstudents:Grade (B ): $($(sed -n "/:B $/p" $file)  | wc -l) "
-			echo "NumOfstudents:Grade (B-): $($(sed -n "/:B-$/p" $file)  | wc -l) "
-			echo "NumOfstudents:Grade (C+): $($(sed -n "/:C+$/p" $file)  | wc -l) "
-			echo "NumOfstudents:Grade (C ): $($(sed -n "/:C $/p" $file)  | wc -l) "
-			echo "NumOfstudents:Grade (C-): $($(sed -n "/:C-$/p" $file)  | wc -l) "
-			echo "NumOfstudents:Grade (D ): $($(sed -n "/:D $/p" $file)  | wc -l) "
-			echo "NumOfstudents:Grade (F ): $($(sed -n "/:F $/p" $file)  | wc -l) "
+			echo "NumOfstudents:Grade (A-): $( sed -n "/:A-$/p" $file  | wc -l) "
+			echo "NumOfstudents:Grade (B+): $( sed -n "/:B+$/p" $file  | wc -l) "
+			echo "NumOfstudents:Grade (B ): $( sed -n "/:B $/p" $file  | wc -l) "
+			echo "NumOfstudents:Grade (B-): $( sed -n "/:B-$/p" $file  | wc -l) "
+			echo "NumOfstudents:Grade (C+): $( sed -n "/:C+$/p" $file  | wc -l) "
+			echo "NumOfstudents:Grade (C ): $( sed -n "/:C $/p" $file  | wc -l) "
+			echo "NumOfstudents:Grade (C-): $( sed -n "/:C-$/p" $file  | wc -l) "
+			echo "NumOfstudents:Grade (D ): $( sed -n "/:D $/p" $file  | wc -l) "
+			echo "NumOfstudents:Grade (F ): $( sed -n "/:F $/p" $file  | wc -l) "
 		fi
 
 
@@ -180,7 +180,12 @@ FailingStudentsReport(){
 			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
 			std_name=$(sed -n '2p' "$std_data_dir/$std_id.stu")
 			
-			echo " $std_name | $sub_name | $sub_code | $score | ${letter:0:2} | $GPA"
+				if [[ ${letter:3} -gt 0 ]] ; then
+					sed -i "${letter:3}i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				else
+					sed -i "1i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				fi
+
 		fi
 		done
 		fi
@@ -277,8 +282,11 @@ AssignGradetoStudent() {
 				continue;
 				fi 
 				letter=`getletter "$score" "$sub_code"`;
-				echo "$letter"
-				sed -i "${letter:3}i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				if [[ ${letter:3} -gt 0 ]] ; then
+					sed -i "${letter:3}i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				else
+					echo "${std_id}:${score}:${letter:0:2}"  >>"$grade_data_dir/$sub_code.grd"
+				fi
 				break;
 			fi
 			done;
@@ -373,9 +381,13 @@ UpdateExistingGrade(){
 				fi 
 				sed -i "/^$std_id:/d" "$grade_data_dir/$sub_code.grd"
 				local letter=`getletter "${new_score}" "$sub_code"`;
-
-				echo ${letter};
-				sed -i "${letter:3}i $std_id:$new_score:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				cat "$grade_data_dir/$sub_code.grd";
+				echo $letter;
+				if [[ ${letter:3} -gt 0 ]] ; then
+					sed -i "${letter:3}i ${std_id}:${new_score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				else
+					sed -i "1i ${std_id}:${new_score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				fi
 
 				break;
 			fi
@@ -537,7 +549,9 @@ getGPA(){
 
 getline(){
 	
-	awk -F : -v x="$1" 'BEGIN{found=0}{if ( x > $2 ) {found=NR-1}} END {print found}' "$grade_data_dir/$2.grd"  ;
+	awk -F : -v x="$1" 'BEGIN{found=0}{if ( x > $2 ) {found=NR}} END {
+if (found==0) print NF+2 
+else  print found }' "$grade_data_dir/$2.grd"  ;
 } 
 ##Refix.
 UpdateSubject() {
