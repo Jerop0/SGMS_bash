@@ -276,9 +276,9 @@ AssignGradetoStudent() {
 					echo "Enter your score in range of 0.0 |  100.0" ;  
 				continue;
 				fi 
-				letter=`getletter $score $sub_code`;
-
-				sed -i "${letter:3}i $std_id:$score:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				letter=`getletter "$score" "$sub_code"`;
+				echo "$letter"
+				sed -i "${letter:3}i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
 				break;
 			fi
 			done;
@@ -356,7 +356,7 @@ UpdateExistingGrade(){
 		fi
 	done;
 	
-		if [[ ! $(sed -n "/^$std_id/p" "$grade_data_dir/$sub_code.grd") ]]; then
+		if [[ ! $(sed -n "/^$std_id:/p" "$grade_data_dir/$sub_code.grd") ]]; then
 			echo "Error: There is a Grade for this STD.";
 			return;
 		else
@@ -371,9 +371,10 @@ UpdateExistingGrade(){
 					echo "Enter your score in range of 0.0 |  100.0" ;  
 					continue;
 				fi 
-				letter=`getletter $new_score $sub_code`;
+				sed -i "/^$std_id:/d" "$grade_data_dir/$sub_code.grd"
+				local letter=`getletter "${new_score}" "$sub_code"`;
 
-				sed -i "/^$std_id/d" "$grade_data_dir/$sub_code.grd"
+				echo ${letter};
 				sed -i "${letter:3}i $std_id:$new_score:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
 
 				break;
@@ -415,23 +416,40 @@ ViewGradesbyStudent(){
 			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
 		esac
 		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
-			
-			for file in $(ls $grade_data_dir/*)
+			file="$std_data_dir/$std_id.stu"
+			old_id=$(sed -n '1p' $file)
+			old_name=$(sed -n '2p' $file)
+			old_email=$(sed -n '3p' $file)
+			old_year=$(sed -n '4p' $file)
+
+			echo "stdid=$old_id";echo "studentName:$old_name" ;echo "Student-Email:$old_email";echo "Year:$old_year";
+			echo "subject_name | CODE | Credits | score | grade | GPA"
+			for file in $(ls $grade_data_dir) 
 			do
-				line=$(sed -n '/^${std_id}:/p' $file)
+
+				degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
+
+				if [[ "$degree" ]]; then
+					score=$(echo "$degree" | awk -F : "{print $2}")
+					GPA=`getGPA $score`
+					letter=`getletter $score $sub_code`
+					sub_code=${file::-4}
+					sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
+					sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+					echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
+					
+				fi
 				
-				echo "$line" ;#need update and add subject name instead of code.
 			done
-			
-			
-			break;  
+			break;
 		else
-			echo "Error: Student with ID '$std_id' already exists.";
+			echo "Error: Student with ID '$std_id' doesn't already exists.";
 			continue
 		fi;
 	done;
 	
-	
+
+			
 }
 
 getletter(){
@@ -441,37 +459,37 @@ getletter(){
 		echo "A+|1"
 	elif [[ ${#x} == 4 ]]; then 
 		score=${x:0:2}
-		if [[ score -ge 90  ]]; then 
+		if [[ $score -ge 90  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "A+|$linenumber"
-		elif [[ score -ge 85  ]]; then 
+		elif [[ $score -ge 85  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "A |$linenumber"
-		elif [[ score -ge 80  ]]; then 
+		elif [[ $score -ge 80  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "A-|$linenumber"
-		elif [[ score -ge 75  ]]; then 
+		elif [[ $score -ge 75  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "B+|$linenumber"
-		elif [[ score -ge 70  ]]; then 
+		elif [[ $score -ge 70  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "B |$linenumber"
-		elif [[ score -ge 65  ]]; then 
+		elif [[ $score -ge 65  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "B-|$linenumber"
-		elif [[ score -ge 60  ]]; then 
+		elif [[ $score -ge 60  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "C+|$linenumber"
-		elif [[ score -ge 55  ]]; then 
+		elif [[ $score -ge 55  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "C |$linenumber"
-		elif [[ score -ge 50  ]]; then 
+		elif [[ $score -ge 50  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "C-|$linenumber"
-		elif [[ score -ge 45  ]]; then 
+		elif [[ $score -ge 45  ]]; then 
 			linenumber=`getline $score $2`	
 			echo "D |$linenumber"
-		elif [[ score -lt 45  ]]; then 
+		elif [[ $score -lt 45  ]]; then 
 
 			linenumber=`getline $score $2`	
 			
@@ -489,27 +507,27 @@ getGPA(){
 		echo "4.0"
 	elif [[ ${#x} == 4 ]]; then 
 		score=${x:0:2}
-		if [[ score -ge 90  ]]; then 
+		if [[ $score -ge 90  ]]; then 
 			echo "4.0"
-		elif [[ score -ge 85  ]]; then 
+		elif [[ $score -ge 85  ]]; then 
 			echo "3.7"
 		elif [[ score -ge 80  ]]; then 
 			echo "3.7"
-		elif [[ score -ge 75  ]]; then 
+		elif [[ $score -ge 75  ]]; then 
 			echo "3.3"
-		elif [[ score -ge 70  ]]; then 
+		elif [[ $score -ge 70  ]]; then 
 			echo "3.0"
-		elif [[ score -ge 65  ]]; then 
+		elif [[ $score -ge 65  ]]; then 
 			echo "2.7"
-		elif [[ score -ge 60  ]]; then 
+		elif [[ $score -ge 60  ]]; then 
 			echo "2.3"
-		elif [[ score -ge 55  ]]; then 
+		elif [[ $score -ge 55  ]]; then 
 			echo "2"
-		elif [[ score -ge 50  ]]; then 
+		elif [[ $score -ge 50  ]]; then 
 			echo "1.7"
-		elif [[ score -ge 45  ]]; then 
+		elif [[ $score -ge 45  ]]; then 
 			echo "1.0"
-		elif [[ score -lt 45  ]]; then 
+		elif [[ $score -lt 45  ]]; then 
 			echo "0.0"
 		fi
 	else 
@@ -518,13 +536,8 @@ getGPA(){
 }
 
 getline(){
-	x=$1
 	
-	awk -F : -v x="$1" '{
-	
-	   if ( $x >= $2 )	
-		print(NR) 
-	}' "$grade_data_dir/$2.grd"  ;
+	awk -F : -v x="$1" 'BEGIN{found=0}{if ( x > $2 ) {found=NR-1}} END {print found}' "$grade_data_dir/$2.grd"  ;
 } 
 ##Refix.
 UpdateSubject() {
