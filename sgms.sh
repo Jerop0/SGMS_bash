@@ -5,6 +5,8 @@ std_data_dir="sgms_data/students"
 grade_data_dir="sgms_data/grades"
 subjects_data_dir="sgms_data/subjects"
 
+mkdir -p "$std_data_dir" "$grade_data_dir" "$subjects_data_dir"
+
 
 
 
@@ -35,6 +37,8 @@ StudentTranscript()
 			echo "subject_name | CODE | Credits | score | grade | GPA"
 			for file in $(ls $grade_data_dir) 
 			do
+				[[ -z "$file" ]] && continue
+				[[ ! -f "$grade_data_dir/$file" ]] && continue
 
 				degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
 
@@ -42,8 +46,8 @@ StudentTranscript()
 					score=$(echo "$degree" | cut -d: -f2)
 					std_id=$(echo "$degree" | cut -d: -f1)
 					GPA=$(getGPA "$score")
-					letter=`getletter $score $sub_code`
 					sub_code=${file::-4}
+					letter=`getletter $score $sub_code`
 					sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
 					sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
 					echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
@@ -53,7 +57,7 @@ StudentTranscript()
 			done
 			break;
 		else
-			echo "Error: Student with ID '$std_id' doesn't already exists.";
+			echo "Error: Student with ID '$std_id' doesn't exist.";
 			continue
 		fi;
 	done;
@@ -71,6 +75,8 @@ TotalGPA(){
 	local  totalsubs=0
 	for file in $(ls $grade_data_dir) 
 	do
+		[[ -z "$file" ]] && continue
+		[[ ! -f "$grade_data_dir/$file" ]] && continue
 		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
 
 		if [[ -n "$degree" ]]; then
@@ -80,13 +86,12 @@ TotalGPA(){
 			std_id=$(echo "$degree" | cut -d: -f1)
 			GPA=$(getGPA $score)
 			
-
-			totalGPA=$(awk -v total="$totalGPA" -v GP="$GPA" 'BEGIN {total= GP + total;print total} ')
-
-			letter=`getletter $score $sub_code`
 			sub_code=${file::-4}
+			letter=`getletter $score $sub_code`
 			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
 			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+
+			totalGPA=$(awk -v total="$totalGPA" -v GP="$GPA" 'BEGIN {total= GP + total;print total} ')
 
 		fi
 	
@@ -110,12 +115,16 @@ while true;do
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			break;
 		else
-			echo "Error: Subject with Code '$sub_code' already exists.";
+			echo "Error: Subject with Code '$sub_code' doesn't exist.";
 			continue
 		fi
 	done;
 	if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			file="$grade_data_dir/$sub_code.grd"
+			if [[ ! -f "$file" ]]; then
+				echo "No grades for subject $sub_code."
+				return
+			fi
 			echo "NumOfstudents:Grade (A+): $( sed -n "/:A+$/p" $file  | wc -l) "
 			echo "NumOfstudents:Grade (A ): $( sed -n "/:A $/p" $file  | wc -l) "
 			echo "NumOfstudents:Grade (A-): $( sed -n "/:A-$/p" $file  | wc -l) "
@@ -167,6 +176,8 @@ TopStudentsbyGPA() {
 FailingStudentsReport(){
 	for file in $(ls $grade_data_dir) 
 	do
+		[[ -z "$file" ]] && continue
+		[[ ! -f "$grade_data_dir/$file" ]] && continue
 		failstds=$(sed -n "/:F $/p" "$grade_data_dir/$file") 
 		if [[ ${#failstds} > 1 ]]; then 
 		for degree in $failstds
@@ -195,15 +206,15 @@ FailingStudentsReport(){
 }
 FullGradeMatrix(){
 	row="ID | STD_NAME | STd_YEAR "
-	for file in $(ls $subjects_data_dir/*) 
-	do
+	for file in "$subjects_data_dir"/*.sub; do
+		[[ -f "$file" ]] || continue
 		sub_name=$(sed -n '2p' $file)
 
 		row="$row | $sub_name"
 	done;
 	echo $row;
-	for file in $(ls $std_data_dir/*) 
-	do
+	for file in "$std_data_dir"/*.stu; do
+		[[ -f "$file" ]] || continue
 	STD_id=$(sed -n '1p' $file)
 	STD_name=$(sed -n '2p' $file)
 	STD_email=$(sed -n '3p' $file)
@@ -213,17 +224,17 @@ FullGradeMatrix(){
 	sub_row="$STD_id | $STD_name | $STD_year"
 	for file in $(ls $grade_data_dir) 
 	do
-		degree=$(sed -n "/^${std_id}:/p" "$grade_data_dir/$file")
+		[[ -z "$file" ]] && continue
+		[[ ! -f "$grade_data_dir/$file" ]] && continue
+		degree=$(sed -n "/^${STD_id}:/p" "$grade_data_dir/$file")
 		
 		if [[ $degree ]]; then
 
 			score=$(echo "$degree" | cut -d: -f2)
 			std_id=$(echo "$degree" | cut -d: -f1)
 			GPA=$(getGPA $score)
-	
-			local letter=`getletter $score $sub_code`
-
 			sub_code=${file::-4}
+			local letter=`getletter $score $sub_code`
 			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
 			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
 			sub_row="$sub_row | ${letter:0:2}  "
@@ -254,7 +265,7 @@ AssignGradetoStudent() {
 		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
 			break;  
 		else
-			echo "Error: Student with ID '$std_id' already exists.";
+			echo "Error: Student with ID '$std_id' doesn't exist.";
 			continue
 		fi;
 	done;
@@ -267,11 +278,14 @@ AssignGradetoStudent() {
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			break;
 		else
-			echo "Error: Subject with Code '$sub_code' already exists.";
+			echo "Error: Subject with Code '$sub_code' doesn't exist.";
 			continue
 		fi
 	done;
-		if [[ $(sed -n "/^$std_id/p" "$grade_data_dir/$sub_code.grd") ]]; then
+		if [[ ! -f "$grade_data_dir/$sub_code.grd" ]]; then
+			touch "$grade_data_dir/$sub_code.grd"
+		fi
+		if [[ $(sed -n "/^$std_id/p" "$grade_data_dir/$sub_code.grd" 2>/dev/null) ]]; then
 			echo "Error: There is a Grade for this STD.";
 			return;
 		else
@@ -287,10 +301,17 @@ AssignGradetoStudent() {
 				continue;
 				fi 
 				local letter=`getletter "$score" "$sub_code"`;
-				if [[ ${letter:3} -gt 0 ]] ; then
-					sed -i "${letter:3}i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				if [[ ! -s "$grade_data_dir/$sub_code.grd" ]] ; then
+					echo "${std_id}:${score}:${letter:0:2}" > "$grade_data_dir/$sub_code.grd"
+				elif [[ ${letter:3} -gt 0 ]] ; then
+					total_lines=$(wc -l < "$grade_data_dir/$sub_code.grd")
+					if [[ ${letter:3} -gt $total_lines ]] ; then
+						echo "${std_id}:${score}:${letter:0:2}" >> "$grade_data_dir/$sub_code.grd"
+					else
+						sed -i "${letter:3}i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+					fi
 				else
-					echo "${std_id}:${score}:${letter:0:2}"  >>"$grade_data_dir/$sub_code.grd"
+					echo "${std_id}:${score}:${letter:0:2}" >>"$grade_data_dir/$sub_code.grd"
 				fi
 				break;
 			fi
@@ -304,15 +325,15 @@ DeleteaGrade(){
 			 +([0-9]))
 			if [[ ${#std_id} -gt 10 ]]; then
 				 echo "Error: Must enter up to 10 digits only.";
-
+				continue
 			fi;;
 			*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
 		esac
 		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
 			break;  
 		else
-			echo "Error: Student with ID '$std_id' already exists.";
-
+			echo "Error: Student with ID '$std_id' doesn't exist.";
+			continue
 		fi;
 	done;
 	while true;do
@@ -324,9 +345,14 @@ DeleteaGrade(){
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			break;
 		else
-			echo "Error: Subject with Code '$sub_code' already exists.";
+			echo "Error: Subject with Code '$sub_code' doesn't exist.";
+			continue
 		fi
 	done;
+	if [[ ! -f "$grade_data_dir/$sub_code.grd" ]]; then
+		echo "Error: No grades file for subject '$sub_code'."
+		return
+	fi
 	if [[ $(sed -n "/^$std_id/p" "$grade_data_dir/$sub_code.grd") ]]; then
 			sed -i "/^$std_id/d" "$grade_data_dir/$sub_code.grd"
 			echo "Deleted sucessfully"
@@ -351,7 +377,7 @@ UpdateExistingGrade(){
 		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
 			break;  
 		else
-			echo "Error: Student with ID '$std_id' already exists.";
+			echo "Error: Student with ID '$std_id' doesn't exist.";
 			continue	
 		fi;
 	done;
@@ -364,13 +390,17 @@ UpdateExistingGrade(){
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			break;
 		else
-			echo "Error: Subject with Code '$sub_code' already exists.";
+			echo "Error: Subject with Code '$sub_code' doesn't exist.";
 			continue
 		fi
 	done;
 	
-		if [[ ! $(sed -n "/^$std_id:/p" "$grade_data_dir/$sub_code.grd") ]]; then
-			echo "Error: There is a Grade for this STD.";
+	if [[ ! -f "$grade_data_dir/$sub_code.grd" ]]; then
+		echo "Error: No grades file for subject '$sub_code'."
+		return
+	fi
+	if [[ ! $(sed -n "/^$std_id:/p" "$grade_data_dir/$sub_code.grd") ]]; then
+			echo "Error: There is no Grade for this STD.";
 			return;
 		else
 			while true; do
@@ -386,12 +416,17 @@ UpdateExistingGrade(){
 				fi 
 				sed -i "/^$std_id:/d" "$grade_data_dir/$sub_code.grd"
 				local letter=`getletter "${new_score}" "$sub_code"`;
-				cat "$grade_data_dir/$sub_code.grd";
-				echo $letter;
-				if [[ ${letter:3} -gt 0 ]] ; then
-					sed -i "${letter:3}i ${std_id}:${new_score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+				if [[ ! -s "$grade_data_dir/$sub_code.grd" ]] ; then
+					echo "${std_id}:${new_score}:${letter:0:2}" > "$grade_data_dir/$sub_code.grd"
+				elif [[ ${letter:3} -gt 0 ]] ; then
+					total_lines=$(wc -l < "$grade_data_dir/$sub_code.grd")
+					if [[ ${letter:3} -gt $total_lines ]] ; then
+						echo "${std_id}:${new_score}:${letter:0:2}" >> "$grade_data_dir/$sub_code.grd"
+					else
+						sed -i "${letter:3}i ${std_id}:${new_score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+					fi
 				else
-					sed -i "1i ${std_id}:${new_score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
+					echo "${std_id}:${new_score}:${letter:0:2}" > "$grade_data_dir/$sub_code.grd"
 				fi
 
 				break;
@@ -414,11 +449,15 @@ ViewGradesbySubject(){
 		if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
 			break
 		else
-			echo "Error: Subject with Code '$sub_code' already exists.";
+			echo "Error: Subject with Code '$sub_code' doesn't exist.";
 			continue
 		fi
 	done;
 	
+	if [[ ! -f "$grade_data_dir/$sub_code.grd" ]]; then
+		echo "No grades for subject $sub_code."
+		return
+	fi
 	awk -F : 'BEGIN{print ("Std:Score:Grade")} {print $0}' "$grade_data_dir/$sub_code.grd"
 }
 ViewGradesbyStudent(){
@@ -443,6 +482,8 @@ ViewGradesbyStudent(){
 			echo "subject_name | CODE | Credits | score | grade | GPA"
 			for file in $(ls $grade_data_dir) 
 			do
+				[[ -z "$file" ]] && continue
+				[[ ! -f "$grade_data_dir/$file" ]] && continue
 
 				degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
 
@@ -450,9 +491,8 @@ ViewGradesbyStudent(){
 					score=$(echo "$degree" | cut -d: -f2)
 					std_id=$(echo "$degree" | cut -d: -f1)
 					GPA=$(getGPA $score)
-					
-					letter=`getletter $score $sub_code`
 					sub_code=${file::-4}
+					letter=`getletter $score $sub_code`
 					sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
 					sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
 					echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
@@ -462,7 +502,7 @@ ViewGradesbyStudent(){
 			done
 			break;
 		else
-			echo "Error: Student with ID '$std_id' doesn't already exists.";
+			echo "Error: Student with ID '$std_id' doesn't exist.";
 			continue
 		fi;
 	done;
@@ -532,7 +572,7 @@ getGPA(){
 			echo "4.0"
 		elif [[ $score -ge 85  ]]; then 
 			echo "3.7"
-		elif [[ score -ge 80  ]]; then 
+		elif [[ $score -ge 80  ]]; then 
 			echo "3.7"
 		elif [[ $score -ge 75  ]]; then 
 			echo "3.3"
@@ -557,10 +597,12 @@ getGPA(){
 }
 
 getline(){
+	[[ -z "$2" ]] && echo "1" && return
+	[[ ! -f "$grade_data_dir/$2.grd" ]] && echo "1" && return
 	
 	awk -F : -v x="$1" 'BEGIN{found=0}{if ( x > $2 ) {found=NR}} END {
-if (found==0) print NF+2 
-else  print found }' "$grade_data_dir/$2.grd"  ;
+if (found==0) print NR+1 
+else  print found }' "$grade_data_dir/$2.grd" 2>/dev/null || echo "1"
 } 
 ##Refix.
 UpdateSubject() {
@@ -597,6 +639,7 @@ UpdateSubject() {
 				sed -i "1s/$old_code/$new_code/" $file;
 				mv $subjects_data_dir/$old_code.sub $subjects_data_dir/$new_code.sub;
 				mv $grade_data_dir/$old_code.grd $grade_data_dir/$new_code.grd;
+				echo "Subject code updated from '$old_code' to '$new_code'."
 				
 				old_code=$new_code
 				break;			
@@ -612,12 +655,14 @@ UpdateSubject() {
 				 if [[ ${#new_name} -gt 20 ]]; then
 						 echo "Error: Must enter up to 20 letter with -_. only."
 						 continue
-					 fi;;
+					 fi
+					break;;
 				*) break;;
 				esac
 	
 			done
-			sed -i "2s/$old_name/$new_name/" $file;;
+			sed -i "2s/$old_name/$new_name/" $file
+			echo "Subject name updated from '$old_name' to '$new_name'.";;
 		3)
 			while true
 			do
@@ -627,7 +672,8 @@ UpdateSubject() {
 					*) echo "Hours must be 1 to 6." ;;
 				esac
 			done
-			sed -i "3s/$old_hours/$new_hours/" $subjects_data_dir/$sub_id.sub;;
+			sed -i "3s/$old_hours/$new_hours/" $subjects_data_dir/$sub_code.sub
+			echo "Subject hours updated from '$old_hours' to '$new_hours'.";;
 		4) return ;;
 		*) echo "Invalid option" ;;
 		esac
@@ -637,8 +683,8 @@ UpdateSubject() {
 
 ListSubjects() {
 	echo "Code         Name         Credits"
-	for file in $(ls $subjects_data_dir/*)
-	do
+	for file in "$subjects_data_dir"/*.sub; do
+		[[ -f "$file" ]] || continue
 		code=$(sed -n '1p' $file)
 		name=$(sed -n '2p' $file)
 		cred=$(sed -n '3p' $file)
@@ -678,7 +724,6 @@ AddSubject() {
 		*) echo "Error: Must enter integer from 1 to 6  only."; return ;;
 	esac
 	echo "Subject $sub_name has been Created with CODE $sub_code.";
-	echo "" >> "$grade_data_dir/$sub_code.grd";
 	local newfile="$subjects_data_dir/$sub_code.sub";
 	
 	echo $sub_code >> $newfile;echo $sub_name >> $newfile;echo $sub_credit >> $newfile
@@ -687,25 +732,26 @@ AddSubject() {
 }
 
 DeleteSubject(){
- 	read -p "Enter your Subject code: " sub_code
- 	
+  	read -p "Enter your Subject code: " sub_code
+  	
 	if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
 		echo "Enter your subject 2–5 letters + 2–4 digits e.g .CS101,MATH203";
 		return
 	fi
     	if [[ -f "$subjects_data_dir/$sub_code.sub" ]]; then
-		read -p "Are you sure you want to delete Subject with code = $sub_code (y/n): " accept
+		sub_name=$(sed -n '2p' "$subjects_data_dir/$sub_code.sub")
+		read -p "Are you sure you want to delete subject '$sub_name' with code = $sub_code (y/n): " accept
 		case $accept in 
 		[Yy])
 			rm -r "$subjects_data_dir/$sub_code.sub";
 			rm -r "$grade_data_dir/$sub_code.grd";
-			echo "Subject with code $sub_code has been with it's grades deleted"; ;;
+			echo "Subject '$sub_name' with code $sub_code has been with it's grades deleted"; ;;
 
 		[Nn]) echo "Thanks"; return ;; 
 		*) echo "invalid option" ;;
 		esac
         else
-	  echo "Error: Student with ID '$std_id' already exists."
+	  echo "Error: Subject with code '$sub_code' doesn't exist."
         fi
 }
 #****************************************************************************************************************************************
@@ -763,20 +809,21 @@ AddStudent() {
 
 }
 DeleteStudent(){
- 	read -p "Enter your student id: " std_id
- 	
+  	read -p "Enter your student id: " std_id
+  	
 	case $std_id in
-     	 +([0-9])) ;;
-      	  *) echo "Error: Must enter digits  only."; return ;;
+      	 +([0-9])) ;;
+       	  *) echo "Error: Must enter digits  only."; return ;;
     	esac
     	if [[ -f "$std_data_dir/$std_id.stu" ]]; then
-		read -p "Are you sure you want to delete student with id = $std_id (y/n): " accept
+		std_name=$(sed -n '2p' "$std_data_dir/$std_id.stu")
+		read -p "Are you sure you want to delete student '$std_name' with id = $std_id (y/n): " accept
 		case $accept in 
 		[Yy])
 			rm -r "$std_data_dir/$std_id.stu";
-			echo "Student with id $std_id has been deleted"; 
-			for file in $(ls "$grade_data_dir/*") 
-			do
+			echo "Student '$std_name' with id $std_id has been deleted"; 
+			for file in "$grade_data_dir"/*.grd; do
+				[[ -f "$file" ]] || continue
 				sed -i "/^$std_id/d" $file
 			done
 			;;
@@ -784,7 +831,7 @@ DeleteStudent(){
 		*) echo "invalid option" ;;
 		esac
         else
-	  echo "Error: Student with ID '$std_id' already exists."
+	  echo "Error: Student with ID '$std_id' doesn't exist."
         fi
 }
 
@@ -834,15 +881,16 @@ UpdateStudent() {
 				*)  echo "Error: Must enter up to 10 digits only."; continue   ;;
 			esac
 
-     echo ${new_id};
 	if [[ -f "$std_data_dir/$new_id.stu" ]]; then
 		
 		echo "Error: Student update to ID '$new_id' already exists.";
 		continue  
 	else
 		mv $file "$std_data_dir/$new_id.stu"
-			for file in $(ls $grade_data_dir/*)
-			do
+		sed -i "1s/$old_id/$new_id/" "$std_data_dir/$new_id.stu"
+		echo "Student ID updated from '$old_id' to '$new_id'."
+			for file in "$grade_data_dir"/*.grd; do
+				[[ -f "$file" ]] || continue
 				sed -i "s/^$old_id/$new_id/" $file;
 			done
 		
@@ -858,7 +906,8 @@ UpdateStudent() {
 					*) break ;;
 				esac
 			done
-			sed -i "2s/$old_name/$new_name/" $std_data_dir/$std_id.stu;;
+			sed -i "2s/$old_name/$new_name/" $std_data_dir/$std_id.stu
+			echo "Student name updated from '$old_name' to '$new_name'.";;
 		3)
 			while true
 			do
@@ -868,7 +917,8 @@ UpdateStudent() {
 					*) echo "Error: Must be user@domain.ext format.";;
 				esac
 			done
-			sed -i "3s/$old_email/$new_email/" $std_data_dir/$std_id.stu;;
+			sed -i "3s/$old_email/$new_email/" $std_data_dir/$std_id.stu
+			echo "Student email updated from '$old_email' to '$new_email'.";;
 		4)
 			while true
 			do
@@ -878,7 +928,8 @@ UpdateStudent() {
 					*) echo "Error: Year must be 1 to 6." ;;
 				esac
 			done
-			sed -i "4s/$old_year/$new_year/" $std_data_dir/$std_id.stu ;;
+			sed -i "4s/$old_year/$new_year/" $std_data_dir/$std_id.stu
+			echo "Student year updated from '$old_year' to '$new_year'.";;
 			
 		5) return ;;
 		*) echo "Invalid option" ;;
@@ -891,8 +942,8 @@ ListStudents() {
 
 	echo "ID | Name | Email | Year"
 
-	for file in $(ls $std_data_dir/*) 
-	do
+	for file in "$std_data_dir"/*.stu; do
+		[[ -f "$file" ]] || continue
 		sid=$(sed -n '1p' $file)
 		sname=$(sed -n '2p' $file)
 		semail=$(sed -n '3p' $file)
