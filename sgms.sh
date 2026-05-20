@@ -13,11 +13,11 @@ mkdir -p "$std_data_dir" "$grade_data_dir" "$subjects_data_dir"
 #-----------------------------------
 
 StudentTranscript()
-{ 
+{
 	while true; do
 
 		read -p "Enter your student id: " std_id
-	
+
 		case $std_id in
 			 +([0-9]))
 			if [[ ${#std_id} -gt 10 ]]; then
@@ -28,32 +28,30 @@ StudentTranscript()
 		esac
 		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
 			file="$std_data_dir/$std_id.stu"
-			old_id=$(sed -n '1p' $file)
-			old_name=$(sed -n '2p' $file)
-			old_email=$(sed -n '3p' $file)
-			old_year=$(sed -n '4p' $file)
+			old_id=$(sed -n '1p' "$file")
+			old_name=$(sed -n '2p' "$file")
+			old_email=$(sed -n '3p' "$file")
+			old_year=$(sed -n '4p' "$file")
 
 			echo "stdid=$old_id";echo "studentName:$old_name" ;echo "Student-Email:$old_email";echo "Year:$old_year";
 			echo "subject_name | CODE | Credits | score | grade | GPA"
-			for file in $(ls $grade_data_dir) 
-			do
-				[[ -z "$file" ]] && continue
-				[[ ! -f "$grade_data_dir/$file" ]] && continue
+			for grade_file in $(ls $grade_data_dir/*.grd); do
+				[[ -f "$grade_file" ]] || continue
 
-				degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
+				degree=$(sed -n "/^${old_id}:/p" "$grade_file")
 
 				if [[ "$degree" ]]; then
 					score=$(echo "$degree" | cut -d: -f2)
 					std_id=$(echo "$degree" | cut -d: -f1)
 					GPA=$(getGPA "$score")
-					sub_code=${file::-4}
-					letter=`getletter $score $sub_code`
-					sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
-					sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+					sub_code=$(basename "$grade_file" .grd)
+					letter=`getletter "$score" "$sub_code"`
+					sub_name=$(sed -n '2p' "$subjects_data_dir/$sub_code.sub")
+					sub_hours=$(sed -n '3p' "$subjects_data_dir/$sub_code.sub")
 					echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
-					
+
 				fi
-				
+
 			done
 			break;
 		else
@@ -61,45 +59,48 @@ StudentTranscript()
 			continue
 		fi;
 	done;
-	
+
 }
 
 
 TotalGPA(){
 
-	old_id=$(sed -n '1p' $1)
-	old_name=$(sed -n '2p' $1)
-	old_email=$(sed -n '3p' $1)
-	old_year=$(sed -n '4p' $1)
+	if [[ ! -f "$1" ]]; then
+		echo "Error: File $1 not found" >&2
+		return 1
+	fi
+
+	old_id=$(sed -n '1p' "$1")
+	old_name=$(sed -n '2p' "$1")
+	old_email=$(sed -n '3p' "$1")
+	old_year=$(sed -n '4p' "$1")
 	local  totalGPA=0
 	local  totalsubs=0
-	for file in $(ls $grade_data_dir) 
-	do
-		[[ -z "$file" ]] && continue
-		[[ ! -f "$grade_data_dir/$file" ]] && continue
-		degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
+	for grade_file in $(ls $grade_data_dir/*.grd); do
+		[[ -f "$grade_file" ]] || continue
+		degree=$(sed -n "/^${old_id}:/p" "$grade_file")
 
 		if [[ -n "$degree" ]]; then
 			totalsubs=$(($totalsubs + 1))
 
 			score=$(echo "$degree" | cut -d: -f2)
 			std_id=$(echo "$degree" | cut -d: -f1)
-			GPA=$(getGPA $score)
-			
-			sub_code=${file::-4}
-			letter=`getletter $score $sub_code`
-			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
-			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+			GPA=$(getGPA "$score")
+
+			sub_code=$(basename "$grade_file" .grd)
+			letter=`getletter "$score" "$sub_code"`
+			sub_name=$(sed -n '2p' "$subjects_data_dir/$sub_code.sub")
+			sub_hours=$(sed -n '3p' "$subjects_data_dir/$sub_code.sub")
 
 			totalGPA=$(awk -v total="$totalGPA" -v GP="$GPA" 'BEGIN {total= GP + total;print total} ')
 
 		fi
-	
-		
+
+
 	done
 	if [[ $totalsubs -gt 0 ]];then
-		##x=$( awk -v total="$totalGPA" -v hours="$totalsubs" 'BEGIN { print total} ')
-		echo "$totalGPA"
+		avgGPA=$(awk -v total="$totalGPA" -v subs="$totalsubs" 'BEGIN {printf "%.2f", total/subs}')
+		echo "$avgGPA"
 	else
 		echo "0.0"
 	fi
@@ -140,17 +141,14 @@ while true;do
 
 
 }
-## stdid.stuc  1 code 2 name 
-### subid.sub  1 code 2 name 
-### subid.grd 1 code 2 score 3 letter. 
-### 
+
 TopStudentsbyGPA() {
     local tmp="/tmp/topstudents.$$"
     : > "$tmp"   
 
     local file sid sname gpa line_no
 
-    for file in "$std_data_dir"/*.stu; do
+    for file in $(ls $std_data_dir/*.stu); do
         [[ -f "$file" ]] || continue
         sid=$(sed -n '1p' "$file")
         sname=$(sed -n '2p' "$file")
@@ -174,80 +172,66 @@ TopStudentsbyGPA() {
 }
 
 FailingStudentsReport(){
-	for file in $(ls $grade_data_dir) 
-	do
-		[[ -z "$file" ]] && continue
-		[[ ! -f "$grade_data_dir/$file" ]] && continue
-		failstds=$(sed -n "/:F $/p" "$grade_data_dir/$file") 
-		if [[ ${#failstds} > 1 ]]; then 
-		for degree in $failstds
-		do		
-		if [[  "$degree" ]]; then
-					score=$(echo "$degree" | cut -d: -f2)
-					std_id=$(echo "$degree" | cut -d: -f1)
-					GPA=$(getGPA $score)
-			
-			sub_code=${file::-4}
-			letter=`getletter $score $sub_code`
-			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
-			std_name=$(sed -n '2p' "$std_data_dir/$std_id.stu")
-			
-				if [[ ${letter:3} -gt 0 ]] ; then
-					sed -i "${letter:3}i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
-				else
-					sed -i "1i ${std_id}:${score}:${letter:0:2}" "$grade_data_dir/$sub_code.grd"
-				fi
+	echo "Student ID | Name | Subject | Score | GPA"
 
-		fi
-		done
-		fi
-	done
 	
+	for file in "$grade_data_dir"/*.grd; do
+		[[ -f "$file" ]] || continue
+		
+		sub_code=$(basename "$file" .grd)
+		sub_name=$(sed -n '2p' "$subjects_data_dir/$sub_code.sub" 2>/dev/null)
+		
+		sed -n "/:F $/p" "$file" | while IFS=: read std_id score grade; do
+			std_name=$(sed -n '2p' "$std_data_dir/$std_id.stu" 2>/dev/null)
+			GPA=$(getGPA "$score")
+			echo "$std_id | $std_name | $sub_name | $score | $GPA"
+		done
+	done
 }
+ 
 FullGradeMatrix(){
 	row="ID | STD_NAME | STd_YEAR "
-	for file in "$subjects_data_dir"/*.sub; do
-		[[ -f "$file" ]] || continue
-		sub_name=$(sed -n '2p' $file)
+	for sub_file in $(ls $subjects_data_dir/*.sub); do
+		[[ -f "$sub_file" ]] || continue
+		sub_name=$(sed -n '2p' "$sub_file")
 
 		row="$row | $sub_name"
 	done;
 	echo $row;
-	for file in "$std_data_dir"/*.stu; do
-		[[ -f "$file" ]] || continue
-	STD_id=$(sed -n '1p' $file)
-	STD_name=$(sed -n '2p' $file)
-	STD_email=$(sed -n '3p' $file)
-	STD_year=$(sed -n '4p' $file)
-	
+	for std_file in $(ls $std_data_dir/*.stu); do
+		[[ -f "$std_file" ]] || continue
+	STD_id=$(sed -n '1p' "$std_file")
+	STD_name=$(sed -n '2p' "$std_file")
+	STD_email=$(sed -n '3p' "$std_file")
+	STD_year=$(sed -n '4p' "$std_file")
+
 
 	sub_row="$STD_id | $STD_name | $STD_year"
-	for file in $(ls $grade_data_dir) 
-	do
-		[[ -z "$file" ]] && continue
-		[[ ! -f "$grade_data_dir/$file" ]] && continue
-		degree=$(sed -n "/^${STD_id}:/p" "$grade_data_dir/$file")
-		
+	for grade_file in $(ls $grade_data_dir/*.grd); do
+		[[ -f "$grade_file" ]] || continue
+		degree=$(sed -n "/^${STD_id}:/p" "$grade_file")
+
 		if [[ $degree ]]; then
 
 			score=$(echo "$degree" | cut -d: -f2)
 			std_id=$(echo "$degree" | cut -d: -f1)
-			GPA=$(getGPA $score)
-			sub_code=${file::-4}
-			local letter=`getletter $score $sub_code`
-			sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
-			sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+			GPA=$(getGPA "$score")
+			sub_code=$(basename "$grade_file" .grd)
+			local letter=`getletter "$score" "$sub_code"`
+			sub_name=$(sed -n '2p' "$subjects_data_dir/$sub_code.sub")
+			sub_hours=$(sed -n '3p' "$subjects_data_dir/$sub_code.sub")
 			sub_row="$sub_row | ${letter:0:2}  "
-		else 
+		else
 		 sub_row="$sub_row |  "
 		fi
 	done
-		
-	echo $sub_row;	
-		
-		
+
+	echo $sub_row;
+
+
+
 	done
-	
+
 }
 
 #------------------
@@ -461,8 +445,14 @@ ViewGradesbySubject(){
 	awk -F : 'BEGIN{print ("Std:Score:Grade")} {print $0}' "$grade_data_dir/$sub_code.grd"
 }
 ViewGradesbyStudent(){
+	if [[ -t 0 ]]; then
+		tty_or_stdin="/dev/tty"
+	else
+		tty_or_stdin="/dev/stdin"
+	fi
+
 	while true; do
-		read -p "Enter your student id: " std_id
+		read -p "Enter your student id: " std_id < "$tty_or_stdin"
 		case $std_id in
 			 +([0-9]))
 			if [[ ${#std_id} -gt 10 ]]; then
@@ -473,32 +463,30 @@ ViewGradesbyStudent(){
 		esac
 		if [[ -f "$std_data_dir/$std_id.stu" ]]; then
 			file="$std_data_dir/$std_id.stu"
-			old_id=$(sed -n '1p' $file)
-			old_name=$(sed -n '2p' $file)
-			old_email=$(sed -n '3p' $file)
-			old_year=$(sed -n '4p' $file)
+			old_id=$(sed -n '1p' "$file")
+			old_name=$(sed -n '2p' "$file")
+			old_email=$(sed -n '3p' "$file")
+			old_year=$(sed -n '4p' "$file")
 
 			echo "stdid=$old_id";echo "studentName:$old_name" ;echo "Student-Email:$old_email";echo "Year:$old_year";
 			echo "subject_name | CODE | Credits | score | grade | GPA"
-			for file in $(ls $grade_data_dir) 
-			do
-				[[ -z "$file" ]] && continue
-				[[ ! -f "$grade_data_dir/$file" ]] && continue
+			for grade_file in $(ls $grade_data_dir/*.grd); do
+				[[ -f "$grade_file" ]] || continue
 
-				degree=$(sed -n "/^${old_id}:/p" "$grade_data_dir/$file")
+				degree=$(sed -n "/^${old_id}:/p" "$grade_file")
 
 				if [[ "$degree" ]]; then
 					score=$(echo "$degree" | cut -d: -f2)
 					std_id=$(echo "$degree" | cut -d: -f1)
-					GPA=$(getGPA $score)
-					sub_code=${file::-4}
-					letter=`getletter $score $sub_code`
-					sub_name=$(sed -n '2p' $subjects_data_dir/$sub_code.sub)
-					sub_hours=$(sed -n '3p' $subjects_data_dir/$sub_code.sub)
+					GPA=$(getGPA "$score")
+					sub_code=$(basename "$grade_file" .grd)
+					letter=`getletter "$score" "$sub_code"`
+					sub_name=$(sed -n '2p' "$subjects_data_dir/$sub_code.sub")
+					sub_hours=$(sed -n '3p' "$subjects_data_dir/$sub_code.sub")
 					echo " $sub_name | $sub_code | $sub_hours | $score | ${letter:0:2} | $GPA"
-					
+
 				fi
-				
+
 			done
 			break;
 		else
@@ -513,85 +501,81 @@ ViewGradesbyStudent(){
 
 getletter(){
 	x=$1
-	
-	if [[ ${#x} == 5 ]]; then 
-		echo "A+|1"
-	elif [[ ${#x} == 4 ]]; then 
-		score=${x:0:2}
 
-		if [[ $score -ge 90  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "A+|$linenumber"
-		elif [[ $score -ge 85  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "A |$linenumber"
-		elif [[ $score -ge 80  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "A-|$linenumber"
-		elif [[ $score -ge 75  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "B+|$linenumber"
-		elif [[ $score -ge 70  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "B |$linenumber"
-		elif [[ $score -ge 65  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "B-|$linenumber"
-		elif [[ $score -ge 60  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "C+|$linenumber"
-		elif [[ $score -ge 55  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "C |$linenumber"
-		elif [[ $score -ge 50  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "C-|$linenumber"
-		elif [[ $score -ge 45  ]]; then 
-			linenumber=`getline $score $2`	
-			echo "D |$linenumber"
-		elif [[ $score -lt 45  ]]; then 
+	score=$(echo "$x" | cut -d. -f1)
 
-			linenumber=`getline $score $2`	
-			
-			echo "F |$linenumber"
-		fi
-	else 
-		echo "F |$";
+	if [[ -z "$score" || ! "$score" =~ ^[0-9]+$ ]]; then
+		linenumber=`getline 0 "$2"`
+		echo "F |$linenumber"
+	elif [[ $score -ge 90 ]]; then
+		linenumber=`getline $score $2`
+		echo "A+|$linenumber"
+	elif [[ $score -ge 85 ]]; then
+		linenumber=`getline $score $2`
+		echo "A |$linenumber"
+	elif [[ $score -ge 80 ]]; then
+		linenumber=`getline $score $2`
+		echo "A-|$linenumber"
+	elif [[ $score -ge 75 ]]; then
+		linenumber=`getline $score $2`
+		echo "B+|$linenumber"
+	elif [[ $score -ge 70 ]]; then
+		linenumber=`getline $score $2`
+		echo "B |$linenumber"
+	elif [[ $score -ge 65 ]]; then
+		linenumber=`getline $score $2`
+		echo "B-|$linenumber"
+	elif [[ $score -ge 60 ]]; then
+		linenumber=`getline $score $2`
+		echo "C+|$linenumber"
+	elif [[ $score -ge 55 ]]; then
+		linenumber=`getline $score $2`
+		echo "C |$linenumber"
+	elif [[ $score -ge 50 ]]; then
+		linenumber=`getline $score $2`
+		echo "C-|$linenumber"
+	elif [[ $score -ge 45 ]]; then
+		linenumber=`getline $score $2`
+		echo "D |$linenumber"
+	elif [[ $score -lt 45 ]]; then
+		linenumber=`getline $score $2`
+		echo "F |$linenumber"
+	else
+		linenumber=`getline 0 "$2"`
+		echo "F |$linenumber"
 	fi
 }
 
 getGPA(){
 	x=$1
-	
-	if [[ ${#x} == 5 ]]; then 
-		echo "4.0"
-	elif [[ ${#x} == 4 ]]; then 
-		score=${x:0:2}
 
-		if [[ $score -ge 90  ]]; then 
-			echo "4.0"
-		elif [[ $score -ge 85  ]]; then 
-			echo "3.7"
-		elif [[ $score -ge 80  ]]; then 
-			echo "3.7"
-		elif [[ $score -ge 75  ]]; then 
-			echo "3.3"
-		elif [[ $score -ge 70  ]]; then 
-			echo "3.0"
-		elif [[ $score -ge 65  ]]; then 
-			echo "2.7"
-		elif [[ $score -ge 60  ]]; then 
-			echo "2.3"
-		elif [[ $score -ge 55  ]]; then 
-			echo "2"
-		elif [[ $score -ge 50  ]]; then 
-			echo "1.7"
-		elif [[ $score -ge 45  ]]; then 
-			echo "1.0"
-		elif [[ $score -lt 45  ]]; then 
-			echo "0.0"
-		fi
-	else 
+	score=$(echo "$x" | cut -d. -f1)
+
+	if [[ -z "$score" || ! "$score" =~ ^[0-9]+$ ]]; then
+		echo "0.0"
+	elif [[ $score -ge 90 ]]; then
+		echo "4.0"
+	elif [[ $score -ge 85 ]]; then
+		echo "3.7"
+	elif [[ $score -ge 80 ]]; then
+		echo "3.7"
+	elif [[ $score -ge 75 ]]; then
+		echo "3.3"
+	elif [[ $score -ge 70 ]]; then
+		echo "3.0"
+	elif [[ $score -ge 65 ]]; then
+		echo "2.7"
+	elif [[ $score -ge 60 ]]; then
+		echo "2.3"
+	elif [[ $score -ge 55 ]]; then
+		echo "2.0"
+	elif [[ $score -ge 50 ]]; then
+		echo "1.7"
+	elif [[ $score -ge 45 ]]; then
+		echo "1.0"
+	elif [[ $score -lt 45 ]]; then
+		echo "0.0"
+	else
 		echo "0.0"
 	fi
 }
@@ -604,7 +588,7 @@ getline(){
 if (found==0) print NR+1 
 else  print found }' "$grade_data_dir/$2.grd" 2>/dev/null || echo "1"
 } 
-##Refix.
+
 UpdateSubject() {
 	read -p "Enter your subject code: " sub_code
 	if [[ ! $sub_code =~ ^[A-Za-z]{2,5}[0-9]{2,4}$ ]]; then 
@@ -650,7 +634,7 @@ UpdateSubject() {
 			while true
 			do
 				read -p "Enter new name: " new_name
-				case $new_name in 
+				case $new_name in
 				[A-z]+([A-z -_.]))
 				 if [[ ${#new_name} -gt 20 ]]; then
 						 echo "Error: Must enter up to 20 letter with -_. only."
@@ -659,9 +643,9 @@ UpdateSubject() {
 					break;;
 				*) break;;
 				esac
-	
+
 			done
-			sed -i "2s/$old_name/$new_name/" $file
+			sed -i "2s|$old_name|$new_name|g" "$file"
 			echo "Subject name updated from '$old_name' to '$new_name'.";;
 		3)
 			while true
@@ -672,7 +656,7 @@ UpdateSubject() {
 					*) echo "Hours must be 1 to 6." ;;
 				esac
 			done
-			sed -i "3s/$old_hours/$new_hours/" $subjects_data_dir/$sub_code.sub
+			sed -i "3s|$old_hours|$new_hours|g" "$subjects_data_dir/$sub_code.sub"
 			echo "Subject hours updated from '$old_hours' to '$new_hours'.";;
 		4) return ;;
 		*) echo "Invalid option" ;;
@@ -683,7 +667,7 @@ UpdateSubject() {
 
 ListSubjects() {
 	echo "Code         Name         Credits"
-	for file in "$subjects_data_dir"/*.sub; do
+	for file in $(ls $subjects_data_dir/*.sub); do
 		[[ -f "$file" ]] || continue
 		code=$(sed -n '1p' $file)
 		name=$(sed -n '2p' $file)
@@ -822,7 +806,7 @@ DeleteStudent(){
 		[Yy])
 			rm -r "$std_data_dir/$std_id.stu";
 			echo "Student '$std_name' with id $std_id has been deleted"; 
-			for file in "$grade_data_dir"/*.grd; do
+			for file in $(ls $grade_data_dir/*.grd); do
 				[[ -f "$file" ]] || continue
 				sed -i "/^$std_id/d" $file
 			done
@@ -889,7 +873,7 @@ UpdateStudent() {
 		mv $file "$std_data_dir/$new_id.stu"
 		sed -i "1s/$old_id/$new_id/" "$std_data_dir/$new_id.stu"
 		echo "Student ID updated from '$old_id' to '$new_id'."
-			for file in "$grade_data_dir"/*.grd; do
+			for file in $(ls $grade_data_dir/*.grd); do
 				[[ -f "$file" ]] || continue
 				sed -i "s/^$old_id/$new_id/" $file;
 			done
@@ -901,23 +885,23 @@ UpdateStudent() {
 			while true
 			do
 				read -p "Enter new name: " new_name
-				case $new_name in 
+				case $new_name in
 					"") echo "Error: Name cannot be empty." ;;
 					*) break ;;
 				esac
 			done
-			sed -i "2s/$old_name/$new_name/" $std_data_dir/$std_id.stu
+			sed -i "2s|$old_name|$new_name|g" "$std_data_dir/$std_id.stu"
 			echo "Student name updated from '$old_name' to '$new_name'.";;
 		3)
 			while true
 			do
 				read -p "Enter new email: " new_email
-				case $new_email in 
+				case $new_email in
 					[A-z]+([A-z0-9-_.])@([@])+([A-z])@([.])+([A-z])) break;;
 					*) echo "Error: Must be user@domain.ext format.";;
 				esac
 			done
-			sed -i "3s/$old_email/$new_email/" $std_data_dir/$std_id.stu
+			sed -i "3s|$old_email|$new_email|g" "$std_data_dir/$std_id.stu"
 			echo "Student email updated from '$old_email' to '$new_email'.";;
 		4)
 			while true
@@ -928,9 +912,9 @@ UpdateStudent() {
 					*) echo "Error: Year must be 1 to 6." ;;
 				esac
 			done
-			sed -i "4s/$old_year/$new_year/" $std_data_dir/$std_id.stu
+			sed -i "4s|$old_year|$new_year|g" "$std_data_dir/$std_id.stu"
 			echo "Student year updated from '$old_year' to '$new_year'.";;
-			
+
 		5) return ;;
 		*) echo "Invalid option" ;;
 		esac
@@ -942,7 +926,7 @@ ListStudents() {
 
 	echo "ID | Name | Email | Year"
 
-	for file in "$std_data_dir"/*.stu; do
+	for file in $(ls $std_data_dir/*.stu); do
 		[[ -f "$file" ]] || continue
 		sid=$(sed -n '1p' $file)
 		sname=$(sed -n '2p' $file)
@@ -1078,13 +1062,13 @@ while true; do
 		"▸Reports&Statistics" \
 		"▸Exit"
 	do
-		case $REPLY in 
+		case $REPLY in
 	1)	 ManageStudents ;;
 	2)	 ManageSubjects ;;
 	3) 	 ManageGrades ;;
 	4)	 Reports_Statistics ;;
 	5)	 exit ;;
-		
+
 	*)
 		echo "Invalid option"
 	esac
@@ -1093,4 +1077,7 @@ while true; do
 
 done
 }
+
+
 mainmenu
+
